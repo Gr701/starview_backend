@@ -1,0 +1,13 @@
+POST http://localhost:8001/datarecord
+
+###
+POST http://localhost:8001/datarecord
+Content-Type: text/plain
+
+This is a message
+
+###
+GET http://localhost:8001/datarecord
+
+###
+DELETE http://localhost:8001/datarecord
