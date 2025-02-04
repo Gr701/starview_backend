@@ -1,13 +1,28 @@
-POST http://localhost:8001/datarecord
+POST https://localhost:8001/datarecord
 
 ###
-POST http://localhost:8001/datarecord
+POST https://localhost:8001/datarecord
 Content-Type: text/plain
+Authorization: Basic dummy:passwd
 
 This is a message
 
 ###
-GET http://localhost:8001/datarecord
+GET https://localhost:8001/datarecord
+Authorization: Basic dummy:passwd
 
 ###
-DELETE http://localhost:8001/datarecord
+DELETE https://localhost:8001/datarecord
+
+###
+POST https://localhost:8001/registration
+Content-Type: text/plain
+
+user2:password2
+
+###
+GET https://localhost:8001/datarecord
+Authorization: Basic user2:password2
+
+###
+GET GET https://localhost:8001

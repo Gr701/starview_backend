@@ -5,22 +5,56 @@ package com.o3.server;
 import com.sun.net.httpserver.*;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyStore;
+import java.util.Map;
 import java.util.stream.Collectors;
+
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLParameters;
+import javax.net.ssl.TrustManagerFactory;
 
 
 public class Server implements HttpHandler {
 
-    String messages = "No messages";
+    private String messages = "No messages";
 
     private Server() {
     }
 
+    /*
+     * Https stuff, SSL 
+     */
+    private static SSLContext myServerSSLContext(String[] args) throws Exception {
+        //char[] passphrase = "progr3key".toCharArray();
+        char[] passphrase = args[1].toCharArray();
+        KeyStore ks = KeyStore.getInstance("JKS");
+        //ks.load(new FileInputStream("keystore.jks"), passphrase);
+        ks.load(new FileInputStream(args[0]), passphrase);
+
+        KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
+        kmf.init(ks, passphrase);
+
+        TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
+        tmf.init(ks);
+
+        SSLContext ssl = SSLContext.getInstance("TLS");
+        ssl.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
+
+        return ssl;
+    }
+    
+    /*
+     * GET
+     */
     private String handleGetRequset(HttpExchange exchange) {
         return exchange.getRequestURI().toString();
     }
@@ -35,6 +69,9 @@ public class Server implements HttpHandler {
         stream.close();
     }
 
+    /*
+     * POST
+     */
     private void handlePostRequest(HttpExchange exchange) throws IOException {
         InputStream stream = exchange.getRequestBody();
         String text = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))
@@ -51,6 +88,9 @@ public class Server implements HttpHandler {
         exchange.sendResponseHeaders(200, -1);
     }
 
+    /*
+     * OTHER
+     */
     private void handleResponse(HttpExchange exchange) throws IOException {
         String message = "Not supported";
         exchange.sendResponseHeaders(400, message.getBytes("UTF-8").length);
@@ -80,14 +120,39 @@ public class Server implements HttpHandler {
     }
 
     public static void main(String[] args) throws Exception {
-        //create the http server to port 8001 with default logger
-        HttpServer server = HttpServer.create(new InetSocketAddress(8001),0);
-        //create context that defines path for the resource, in this case a "help"
-        //server.createContext("/help", new Server());
-        server.createContext("/datarecord", new Server());
-        // creates a default executor
-        server.setExecutor(null); 
-        server.start(); 
-        System.out.println("\nServer started");
+        try {
+            //create the http server to port 8001 with default logger
+            HttpsServer server = HttpsServer.create(new InetSocketAddress(8001),0);
+
+            UserAuthenticator userAuthenticator = new UserAuthenticator();
+
+            SSLContext sslContext = myServerSSLContext(args);
+            server.setHttpsConfigurator(new HttpsConfigurator(sslContext) {
+                public void configure(HttpsParameters params) {
+                    InetSocketAddress remote = params.getClientAddress();
+                    SSLContext c = getSSLContext();
+                    SSLParameters sslparams = c.getDefaultSSLParameters();
+                    params.setSSLParameters(sslparams);
+                }
+            });
+
+            //create context that defines path for the resource, in this case a "help"
+            //server.createContext("/help", new Server());
+            HttpContext datarecordContext = server.createContext("/datarecord", new Server());
+            datarecordContext.setAuthenticator(userAuthenticator);
+
+            server.createContext("/registration", new RegistrationHandler(userAuthenticator)); 
+
+            // creates a default executor
+            server.setExecutor(null); 
+            server.start(); 
+            System.out.println("\nServer started");
+        } catch (FileNotFoundException e) {
+            System.out.println("Certificate not found");
+            e.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
     }
 }

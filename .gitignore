@@ -455,3 +455,6 @@ Temporary Items
 
 # Built Visual Studio Code Extensions
 *.vsix
+
+#keytool files
+*.jks
