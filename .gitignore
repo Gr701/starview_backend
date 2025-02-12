@@ -458,3 +458,7 @@ Temporary Items
 
 #keytool files
 *.jks
+
+#my ignores
+test.md
+.vscode/*

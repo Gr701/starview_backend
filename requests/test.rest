@@ -2,10 +2,16 @@ POST https://localhost:8001/datarecord
 
 ###
 POST https://localhost:8001/datarecord
-Content-Type: text/plain
+Content-Type: application/json
 Authorization: Basic dummy:passwd
 
-This is a message
+{
+    "recordIdentifier" : "Jupiter",
+    "recordDescription": "Notes about Jupiter during observation",
+    "recordPayload": "Jupiter great red spot noticed, no changes related to previousobservation",
+    "recordRightAscension" : "05h 11m 42s",
+    "recordDeclination": "+22° 15' 54\""
+}
 
 ###
 GET https://localhost:8001/datarecord
@@ -16,9 +22,13 @@ DELETE https://localhost:8001/datarecord
 
 ###
 POST https://localhost:8001/registration
-Content-Type: text/plain
+Content-Type: application/json
 
-user2:password2
+{
+    "username": "user2",
+    "password": "password2",
+    "email": "new email"
+}
 
 ###
 GET https://localhost:8001/datarecord

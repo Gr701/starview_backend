@@ -1,5 +1,6 @@
 package com.o3.server;
 
+import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
@@ -11,6 +12,9 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 
 public class RegistrationHandler implements HttpHandler {
 
@@ -20,42 +24,61 @@ public class RegistrationHandler implements HttpHandler {
         userAuthenticator = ua;
     }
 
+    private void sendResponse(HttpExchange exchange, int code, String message) throws IOException {
+        exchange.sendResponseHeaders(code, message.getBytes("UTF-8").length);
+        OutputStream os = exchange.getResponseBody();
+        os.write(message.getBytes());
+        os.flush();
+        os.close();
+    }
+
     @Override
     public void handle(HttpExchange exchange) throws IOException {
         String method = exchange.getRequestMethod().toUpperCase();
 
         if ("POST".equals(method)) {
-            System.out.println("we got registration post request");
-            InputStream is = exchange.getRequestBody();
-            String text = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))
-                .lines().collect(Collectors.joining("\n"));
+            Headers headers = exchange.getRequestHeaders();
+            if (headers.containsKey("Content-Type")) {
+                if (headers.get("Content-Type").get(0).equalsIgnoreCase("application/json")) {
+                    System.out.println("we got registration post request");
 
-            String[] creds = text.split(":");
-            if (creds.length != 2) {
-                String message = "Wrong data format";
-                exchange.sendResponseHeaders(400, message.getBytes("UTF-8").length);
-                OutputStream os = exchange.getResponseBody();
-                os.write(message.getBytes());
-                os.flush();
-                os.close();
-            } else if (!userAuthenticator.addUser(creds[0], creds[1])) {
-                String message = "User already exists";
-                exchange.sendResponseHeaders(403, message.getBytes("UTF-8").length);
-                OutputStream os = exchange.getResponseBody();
-                os.write(message.getBytes());
-                os.flush();
-                os.close();
+                    InputStream stream = exchange.getRequestBody();
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
+                    String newUserText = reader.lines().collect(Collectors.joining("\n"));
+                    reader.close();
+                    stream.close();
+
+                    if (newUserText != null && newUserText.length() != 0) {
+                        try {
+                            JSONObject newUserJson = new JSONObject(newUserText);
+                            String username = newUserJson.getString("username");
+                            String password = newUserJson.getString("password");
+                            String email = newUserJson.getString("email");
+
+                            if (username.length() != 0 && password.length() != 0) {
+                                System.out.println("registering user " + username + " " + password);
+                                if (userAuthenticator.addUser(username, password, email)) {
+                                    sendResponse(exchange, 200, "User registred");
+                                } else {
+                                    sendResponse(exchange, 405, "User already exists");
+                                }
+                            } else {
+                                sendResponse(exchange, 413, "No proper user credentials");
+                            }
+                        } catch (JSONException e) {
+                            System.out.println("json parse error, faulty user json");
+                        } 
+                    } else {
+                        sendResponse(exchange, 412, "No user credentials");
+                    }
+                } else {
+                    sendResponse(exchange, 407, "Content type is not application/json");
+                }
             } else {
-                exchange.sendResponseHeaders(200, -1);
+                sendResponse(exchange, 411, "No content type in request");
             }
-            
         } else {
-            String message = "Not supported";
-            exchange.sendResponseHeaders(400, message.getBytes("UTF-8").length);
-            OutputStream os = exchange.getResponseBody();
-            os.write(message.getBytes());
-            os.flush();
-            os.close();
+            sendResponse(exchange, 400, "Not supported");
         }
     }
     
