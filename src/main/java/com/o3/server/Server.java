@@ -25,11 +25,11 @@ public class Server {
      */
     private static SSLContext myServerSSLContext(String[] args) throws Exception {
         //char[] passphrase = "progr3key".toCharArray();
-        char[] passphrase = "passwordTest".toCharArray();
-        //char[] passphrase = args[1].toCharArray();
+        //char[] passphrase = "passwordTest".toCharArray();
+        char[] passphrase = args[1].toCharArray();
         KeyStore ks = KeyStore.getInstance("JKS");
-        ks.load(new FileInputStream("keystoreTest2.jks"), passphrase);
-        //ks.load(new FileInputStream(args[0]), passphrase);
+        //ks.load(new FileInputStream("keystoreTest2.jks"), passphrase);
+        ks.load(new FileInputStream(args[0]), passphrase);
 
         KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
         kmf.init(ks, passphrase);
@@ -53,7 +53,7 @@ public class Server {
             SSLContext sslContext = myServerSSLContext(args);
             server.setHttpsConfigurator(new HttpsConfigurator(sslContext) {
                 public void configure(HttpsParameters params) {
-                    InetSocketAddress remote = params.getClientAddress();
+                    //InetSocketAddress remote = params.getClientAddress();
                     SSLContext c = getSSLContext();
                     SSLParameters sslparams = c.getDefaultSSLParameters();
                     params.setSSLParameters(sslparams);
