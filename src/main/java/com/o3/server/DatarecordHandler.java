@@ -6,6 +6,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 
@@ -41,6 +44,8 @@ public class DatarecordHandler implements HttpHandler {
             obj.put("recordPayload", r.getPayload());
             obj.put("recordRightAscension", r.getRightAscension());
             obj.put("recordDeclination", r.getDeclination());
+            obj.put("recordTimeReceived", r.getTimeReceived());
+            System.out.println(r.getTimeReceived());
             responseMessages.put(obj);
         }
 
@@ -73,12 +78,15 @@ public class DatarecordHandler implements HttpHandler {
                         String rightAscension = newRecordJson.getString("recordRightAscension");
                         String declination = newRecordJson.getString("recordDeclination");
 
-                        
+                        ZonedDateTime date = ZonedDateTime.now(ZoneId.of("UTC"));
+                        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSX");
+                        String dateText = date.format(formatter);
+
                         if (identifier.length() != 0 && description.length() != 0 && payload.length() != 0 
                             && rightAscension.length() != 0 && declination.length() != 0) 
                         {
                             System.out.println("adding the record " + identifier + " " + payload);
-                            messages.add(new ObservationRecord(identifier, description, payload, rightAscension, declination));
+                            messages.add(new ObservationRecord(identifier, description, payload, rightAscension, declination, dateText));
                             sendResponse(exchange, 200, "Record added");
                         } else {
                             sendResponse(exchange, 413, "No proper record information");
