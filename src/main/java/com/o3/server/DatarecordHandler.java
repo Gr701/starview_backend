@@ -10,6 +10,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.stream.Collectors;
 
 import org.json.JSONArray;
@@ -25,9 +26,12 @@ public class DatarecordHandler implements HttpHandler {
 
     //private String messages = "No messages";
     private ArrayList<ObservationRecord> messages;
+    private UserAuthenticator userAuthenticator;
 
-    public DatarecordHandler() {
+    public DatarecordHandler(UserAuthenticator ua) {
         messages = new ArrayList<ObservationRecord>();
+
+        userAuthenticator = ua;
     }
 
     private void handleGet(HttpExchange exchange) throws IOException {
@@ -45,7 +49,20 @@ public class DatarecordHandler implements HttpHandler {
             obj.put("recordRightAscension", r.getRightAscension());
             obj.put("recordDeclination", r.getDeclination());
             obj.put("recordTimeReceived", r.getTimeReceived());
-            System.out.println(r.getTimeReceived());
+            obj.put("recordOwner", r.getOwner());
+
+            if (r.getIsObservatoryPresent()) {
+                JSONObject observatory = new JSONObject();
+                observatory.put("observatoryName", r.getObservatoryName());
+                observatory.put("latitude", r.getLatitude());
+                observatory.put("longitude", r.getLongitude());
+
+                JSONArray observatoryArray = new JSONArray();
+                observatoryArray.put(observatory);
+                obj.put("observatory", observatoryArray);
+            }
+
+            //System.out.println(r.getTimeReceived());
             responseMessages.put(obj);
         }
 
@@ -56,6 +73,31 @@ public class DatarecordHandler implements HttpHandler {
         stream.flush();
         stream.close();
     }
+
+
+
+
+    private static String getUsernameFromAuth(HttpExchange exchange) {
+        // Get the Authorization header
+        String authHeader = exchange.getRequestHeaders().getFirst("Authorization");
+
+        if (authHeader != null && authHeader.startsWith("Basic ")) {
+            // Extract the base64-encoded credentials
+            String base64Credentials = authHeader.substring("Basic ".length()).trim();
+            byte[] decodedBytes = Base64.getDecoder().decode(base64Credentials);
+            String credentials = new String(decodedBytes);
+
+            // Split username and password
+            String[] parts = credentials.split(":", 2);
+            if (parts.length == 2) {
+                return parts[0]; // Return the username
+            }
+        }
+        return null; // Return null if no valid auth data found
+    }
+
+
+
 
     private void handlePost(HttpExchange exchange) throws IOException {
         Headers headers = exchange.getRequestHeaders();
@@ -74,9 +116,48 @@ public class DatarecordHandler implements HttpHandler {
                         JSONObject newRecordJson = new JSONObject(newRecordText);
                         String identifier = newRecordJson.getString("recordIdentifier");
                         String description = newRecordJson.getString("recordDescription");
+
                         String payload = newRecordJson.getString("recordPayload");
+
                         String rightAscension = newRecordJson.getString("recordRightAscension");
                         String declination = newRecordJson.getString("recordDeclination");
+
+                        String owner;
+                        if (newRecordJson.has("recordOwner")) {
+                            owner = newRecordJson.getString("recordOwner");
+                        } else {
+                            String username = getUsernameFromAuth(exchange);
+                            owner = userAuthenticator.getNickname(username);
+                        }
+
+
+        
+                        
+                        boolean isObservatoryPresent = false;
+                        String observatoryName = null;
+                        String latitude = null;
+                        String longitude = null;
+                        if (newRecordJson.has("observatory")) {
+                            JSONArray observatoryArray = newRecordJson.getJSONArray("observatory");
+                            if (observatoryArray.length() > 0) {
+                                isObservatoryPresent = true;
+                                JSONObject observatory = observatoryArray.getJSONObject(0);
+                                System.out.println(observatory.toString());
+
+                                System.out.println("payload1");
+                                observatoryName = observatory.getString("observatoryName");
+                                System.out.println("payload3");
+                                latitude = String.valueOf(observatory.getFloat("latitude"));
+                                System.out.println("payload2");
+
+                                longitude = String.valueOf(observatory.getFloat("longitude"));
+                                
+
+                            }
+                        }
+                        
+
+                        System.out.println("payload4");
 
                         ZonedDateTime date = ZonedDateTime.now(ZoneId.of("UTC"));
                         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSX");
@@ -86,7 +167,9 @@ public class DatarecordHandler implements HttpHandler {
                             && rightAscension.length() != 0 && declination.length() != 0) 
                         {
                             System.out.println("adding the record " + identifier + " " + payload);
-                            messages.add(new ObservationRecord(identifier, description, payload, rightAscension, declination, dateText));
+                            messages.add(new ObservationRecord(identifier, description, payload, rightAscension, 
+                                                                declination, dateText, owner, isObservatoryPresent, 
+                                                                observatoryName, latitude, longitude));
                             sendResponse(exchange, 200, "Record added");
                         } else {
                             sendResponse(exchange, 413, "No proper record information");

@@ -54,10 +54,11 @@ public class RegistrationHandler implements HttpHandler {
                             String username = newUserJson.getString("username");
                             String password = newUserJson.getString("password");
                             String email = newUserJson.getString("email");
+                            String userNickname = newUserJson.getString("userNickname");
 
                             if (username.length() != 0 && password.length() != 0) {
                                 System.out.println("registering user " + username + " " + password);
-                                if (userAuthenticator.addUser(username, password, email)) {
+                                if (userAuthenticator.addUser(username, password, email, userNickname)) {
                                     sendResponse(exchange, 200, "User registred");
                                 } else {
                                     sendResponse(exchange, 405, "User already exists");

@@ -12,12 +12,12 @@ public class UserAuthenticator extends BasicAuthenticator {
         super("datarecord");
 
         users = new Hashtable<String, User>();
-        users.put("dummy", new User("dummy", "passwd", "dummail"));
+        users.put("dummy", new User("dummy", "passwd", "dummail", "nikinimi"));
     }
 
-    public boolean addUser(String login, String password, String email) {
+    public boolean addUser(String login, String password, String email, String userNickname) {
         if (users.get(login) == null) {
-            users.put(login, new User(login, password, email));
+            users.put(login, new User(login, password, email, userNickname));
             return true;
         }
         return false;
@@ -29,5 +29,9 @@ public class UserAuthenticator extends BasicAuthenticator {
             return true;
         }
         return false;
+    }
+
+    public String getNickname(String login) {
+        return users.get(login).getNickname();
     }
 }

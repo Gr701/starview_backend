@@ -62,7 +62,7 @@ public class Server {
 
             //create context that defines path for the resource, in this case a "help"
             //server.createContext("/help", new Server());
-            HttpContext datarecordContext = server.createContext("/datarecord", new DatarecordHandler());
+            HttpContext datarecordContext = server.createContext("/datarecord", new DatarecordHandler(userAuthenticator));
             datarecordContext.setAuthenticator(userAuthenticator);
 
             server.createContext("/registration", new RegistrationHandler(userAuthenticator)); 
