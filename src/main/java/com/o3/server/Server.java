@@ -24,11 +24,11 @@ public class Server {
      */
     private static SSLContext myServerSSLContext(String[] args) throws Exception {
         //char[] passphrase = "progr3key".toCharArray();
-        char[] passphrase = "passwordTest".toCharArray();
-        //char[] passphrase = args[1].toCharArray();
+        //char[] passphrase = "passwordTest".toCharArray();
+        char[] passphrase = args[1].toCharArray();
         KeyStore ks = KeyStore.getInstance("JKS");
-        ks.load(new FileInputStream("keystoreTest2.jks"), passphrase);
-        //ks.load(new FileInputStream(args[0]), passphrase);
+        //ks.load(new FileInputStream("keystoreTest2.jks"), passphrase);
+        ks.load(new FileInputStream(args[0]), passphrase);
 
         KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
         kmf.init(ks, passphrase);
