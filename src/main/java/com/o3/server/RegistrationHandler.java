@@ -18,7 +18,7 @@ import org.json.JSONObject;
 
 public class RegistrationHandler implements HttpHandler {
 
-    UserAuthenticator userAuthenticator;
+    private final UserAuthenticator userAuthenticator;
 
     public RegistrationHandler(UserAuthenticator ua) {
         userAuthenticator = ua;
@@ -40,7 +40,7 @@ public class RegistrationHandler implements HttpHandler {
             Headers headers = exchange.getRequestHeaders();
             if (headers.containsKey("Content-Type")) {
                 if (headers.get("Content-Type").get(0).equalsIgnoreCase("application/json")) {
-                    System.out.println("we got registration post request");
+                    //System.out.println("RegistrationHandler > handle > We got registration post request");
 
                     InputStream stream = exchange.getRequestBody();
                     BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
@@ -57,7 +57,7 @@ public class RegistrationHandler implements HttpHandler {
                             String userNickname = newUserJson.getString("userNickname");
 
                             if (username.length() != 0 && password.length() != 0) {
-                                System.out.println("registering user " + username + " " + password);
+                                //System.out.println("RegistrationHandler > handle > Registering user " + username + " " + password);
                                 if (userAuthenticator.addUser(username, password, email, userNickname)) {
                                     sendResponse(exchange, 200, "User registred");
                                 } else {
@@ -67,7 +67,8 @@ public class RegistrationHandler implements HttpHandler {
                                 sendResponse(exchange, 413, "No proper user credentials");
                             }
                         } catch (JSONException e) {
-                            System.out.println("json parse error, faulty user json");
+                            //System.out.println("RegistrationHandler > handle > Json parse error, faulty user json");
+                            sendResponse(exchange, 413, "No proper user credentials");
                         } 
                     } else {
                         sendResponse(exchange, 412, "No user credentials");

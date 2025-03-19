@@ -27,7 +27,8 @@ Content-Type: application/json
 {
     "username": "user2",
     "password": "password2",
-    "email": "new email"
+    "email": "new email",
+    "userNickname": "ninin"
 }
 
 ###
@@ -36,3 +37,29 @@ Authorization: Basic user2:password2
 
 ###
 GET GET https://localhost:8001
+
+###
+POST https://localhost:8001/datarecord
+Content-Type: application/json
+Authorization: Basic user2:password2
+
+{
+    "recordRightAscension":{},
+    "recordPayload":{},
+    "recordDeclination":0.5654151282359118,
+    "recordDescription":{},
+    "recordIdentifier":0.8177455329831433
+}
+
+###
+POST https://localhost:8001/datarecord
+Content-Type: application/json
+Authorization: Basic user2:password2
+
+ {
+    "recordRightAscension":"4h 14m 33s",
+    "recordPayload":{},
+    "recordDeclination":"+15° 45' 2\"",
+    "recordDescription":{},
+    "recordIdentifier":{}
+ }

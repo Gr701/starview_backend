@@ -13,7 +13,7 @@ public class User {
         this.nickname = nickname;
     }
 
-    public String getlogin() {return login;} 
+    public String getLogin() {return login;} 
     public String getPassword() {return password;} 
     public String getEmail() {return email;} 
     public String getNickname() {return nickname;}

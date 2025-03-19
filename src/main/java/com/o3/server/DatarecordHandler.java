@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -25,24 +26,29 @@ import com.sun.net.httpserver.HttpHandler;
 public class DatarecordHandler implements HttpHandler {
 
     //private String messages = "No messages";
-    private ArrayList<ObservationRecord> messages;
-    private UserAuthenticator userAuthenticator;
+    //private ArrayList<ObservationRecord> messages;
+    private final UserAuthenticator userAuthenticator;
+    private DatabaseManager db;
 
     public DatarecordHandler(UserAuthenticator ua) {
-        messages = new ArrayList<ObservationRecord>();
-
         userAuthenticator = ua;
+        //messages = new ArrayList<ObservationRecord>();
+        db = DatabaseManager.getInstance();
     }
 
     private void handleGet(HttpExchange exchange) throws IOException {
-        if (messages.isEmpty()) {
+        //if (messages.isEmpty()) {
+        if (db.isRecordTableEmpty()) {
             exchange.sendResponseHeaders(204, -1);
             return;
         }
 
+        ArrayList<ObservationRecord> messages = db.getRecords();
         JSONArray responseMessages = new JSONArray();
         for (ObservationRecord r : messages) {
             JSONObject obj = new JSONObject();
+            obj.put("id", r.getId());
+
             obj.put("recordIdentifier", r.getIdentifier());
             obj.put("recordDescription", r.getDescription());
             obj.put("recordPayload", r.getPayload());
@@ -62,7 +68,22 @@ public class DatarecordHandler implements HttpHandler {
                 obj.put("observatory", observatoryArray);
             }
 
-            //System.out.println(r.getTimeReceived());
+            if (r.getIsWeatherPresent()) {
+                JSONObject observatoryWeather = new JSONObject();
+                observatoryWeather.put("temperatureInKelvins", r.getTemperatureInKelvins());
+                observatoryWeather.put("cloudinessPercentance", r.getCloudinessPercentance());
+                observatoryWeather.put("bagroundLightVolume", r.getBagroundLightVolume());
+
+                JSONArray observatoryWeatherArray = new JSONArray();
+                observatoryWeatherArray.put(observatoryWeather);
+                obj.put("observatoryWeather", observatoryWeatherArray);
+            }
+
+            if (r.getModified() != null) {
+                obj.put("updateReason", r.getUpdateReason());
+                obj.put ("modified", r.getModified());
+            }
+
             responseMessages.put(obj);
         }
 
@@ -73,8 +94,6 @@ public class DatarecordHandler implements HttpHandler {
         stream.flush();
         stream.close();
     }
-
-
 
 
     private static String getUsernameFromAuth(HttpExchange exchange) {
@@ -97,97 +116,247 @@ public class DatarecordHandler implements HttpHandler {
     }
 
 
-
-
     private void handlePost(HttpExchange exchange) throws IOException {
-        Headers headers = exchange.getRequestHeaders();
-        if (headers.containsKey("Content-Type")) {
-            if (headers.get("Content-Type").get(0).equalsIgnoreCase("application/json")) {
-                System.out.println("we got record post request");
+        try {
+            Headers headers = exchange.getRequestHeaders();
+            if (headers.containsKey("Content-Type")) {
+                if (headers.get("Content-Type").get(0).equalsIgnoreCase("application/json")) {
+                    //System.out.println("DatarecordHandler > handlePost > We got record post request");
 
-                InputStream stream = exchange.getRequestBody();
-                BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
-                String newRecordText = reader.lines().collect(Collectors.joining("\n"));
-                reader.close();
-                stream.close();
+                    InputStream stream = exchange.getRequestBody();
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
+                    String newRecordText = reader.lines().collect(Collectors.joining("\n"));
+                    reader.close();
+                    stream.close();
 
-                if (newRecordText != null && newRecordText.length() != 0) {
-                    try {
-                        JSONObject newRecordJson = new JSONObject(newRecordText);
-                        String identifier = newRecordJson.getString("recordIdentifier");
-                        String description = newRecordJson.getString("recordDescription");
+                    if (newRecordText != null && newRecordText.length() != 0) {
+                        try {
+                            //BASICS
+                            JSONObject newRecordJson = new JSONObject(newRecordText);
+                            String identifier = newRecordJson.getString("recordIdentifier");
+                            String description = newRecordJson.getString("recordDescription");
+                            String payload = newRecordJson.getString("recordPayload");
+                            String rightAscension = newRecordJson.getString("recordRightAscension");
+                            String declination = newRecordJson.getString("recordDeclination");
 
-                        String payload = newRecordJson.getString("recordPayload");
-
-                        String rightAscension = newRecordJson.getString("recordRightAscension");
-                        String declination = newRecordJson.getString("recordDeclination");
-
-                        String owner;
-                        if (newRecordJson.has("recordOwner")) {
-                            owner = newRecordJson.getString("recordOwner");
-                        } else {
-                            String username = getUsernameFromAuth(exchange);
-                            owner = userAuthenticator.getNickname(username);
-                        }
-
-
-        
-                        
-                        boolean isObservatoryPresent = false;
-                        String observatoryName = null;
-                        String latitude = null;
-                        String longitude = null;
-                        if (newRecordJson.has("observatory")) {
-                            JSONArray observatoryArray = newRecordJson.getJSONArray("observatory");
-                            if (observatoryArray.length() > 0) {
-                                isObservatoryPresent = true;
-                                JSONObject observatory = observatoryArray.getJSONObject(0);
-                                System.out.println(observatory.toString());
-
-                                System.out.println("payload1");
-                                observatoryName = observatory.getString("observatoryName");
-                                System.out.println("payload3");
-                                latitude = String.valueOf(observatory.getFloat("latitude"));
-                                System.out.println("payload2");
-
-                                longitude = String.valueOf(observatory.getFloat("longitude"));
-                                
-
+                            //OWNER
+                            String owner;
+                            String ownerUsername = getUsernameFromAuth(exchange);
+                            if (newRecordJson.has("recordOwner")) {
+                                owner = newRecordJson.getString("recordOwner");
+                            } else {
+                                owner = userAuthenticator.getNickname(ownerUsername);
                             }
-                        }
-                        
 
-                        System.out.println("payload4");
+                            //OBSERVATORY
+                            boolean isObservatoryPresent = false;
+                            String observatoryName = null;
+                            Double latitude = 0.0;
+                            Double longitude = 0.0;
+                            if (newRecordJson.has("observatory")) {
+                                JSONArray observatoryArray = newRecordJson.getJSONArray("observatory");
+                                if (observatoryArray.length() > 0) {
+                                    isObservatoryPresent = true;
+                                    JSONObject observatory = observatoryArray.getJSONObject(0);
+                                    observatoryName = observatory.getString("observatoryName");
+                                    latitude = observatory.getDouble("latitude");
+                                    longitude = observatory.getDouble("longitude");
+                                }
+                            }
 
-                        ZonedDateTime date = ZonedDateTime.now(ZoneId.of("UTC"));
-                        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSX");
-                        String dateText = date.format(formatter);
+                            //TIME
+                            ZonedDateTime date = ZonedDateTime.now(ZoneId.of("UTC"));
+                            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSX");
+                            String dateText = date.format(formatter);
+                           
+                            //WEATHER
+                            JSONObject observatoryWeather = null;
+                            boolean isWeatherPresent = false;
+                            Double temperatureInKelvins = -1.0;
+                            Double cloudinessPercentance = 0.0;
+                            Double bagroundLightVolume = 0.0;
+                            if (newRecordJson.has("observatoryWeather")) {
+                                isWeatherPresent = true;
+                                observatoryWeather = WeatherManager.getWeather(latitude, longitude, dateText);
+                                temperatureInKelvins = observatoryWeather.getDouble("temperatureInKelvins");
+                                cloudinessPercentance = observatoryWeather.getDouble("cloudinessPercentance");
+                                bagroundLightVolume = observatoryWeather.getDouble("bagroundLightVolume");  
+                            }
+                             
 
-                        if (identifier.length() != 0 && description.length() != 0 && payload.length() != 0 
-                            && rightAscension.length() != 0 && declination.length() != 0) 
-                        {
-                            System.out.println("adding the record " + identifier + " " + payload);
-                            messages.add(new ObservationRecord(identifier, description, payload, rightAscension, 
-                                                                declination, dateText, owner, isObservatoryPresent, 
-                                                                observatoryName, latitude, longitude));
-                            sendResponse(exchange, 200, "Record added");
-                        } else {
+                            //System.out.println("DatarecordHandler > handlePost > RightAscension = " + rightAscension);
+                            if (!(identifier == null || identifier.isEmpty() || newRecordJson.get("recordIdentifier") instanceof JSONObject
+                                || description == null || description.isEmpty() || newRecordJson.get("recordDescription") instanceof JSONObject
+                                || payload == null || payload.isEmpty() || newRecordJson.get("recordPayload") instanceof JSONObject
+                                || rightAscension == null || rightAscension.isEmpty() || newRecordJson.get("recordRightAscension") instanceof JSONObject
+                                || declination == null || declination.isEmpty() || newRecordJson.get("recordDeclination") instanceof JSONObject))
+                            {
+                                //System.out.println("DatarecordHandler > handlePost > Adding the record " + identifier + " " + payload);
+                                db.addRecord(new ObservationRecord(null, identifier, description, payload, rightAscension, 
+                                                                    declination, dateText, owner, isObservatoryPresent, 
+                                                                    observatoryName, latitude, longitude, isWeatherPresent,
+                                                                    temperatureInKelvins, cloudinessPercentance, bagroundLightVolume,
+                                                                    ownerUsername, null, null));
+                                sendResponse(exchange, 200, "Record added");
+                            } else {
+                                sendResponse(exchange, 413, "No proper record information");
+                            }
+                        } catch (JSONException e) {
+                            //System.out.println("DatarecordHandler > handlePost > Json parse error, faulty record json");
                             sendResponse(exchange, 413, "No proper record information");
-                        }
-                    } catch (JSONException e) {
-                        System.out.println("json parse error, faulty user json");
-                        sendResponse(exchange, 413, "No proper record information");
-                    } 
+                        } 
+                    } else {
+                        sendResponse(exchange, 412, "No record information");
+                    }
                 } else {
-                    sendResponse(exchange, 412, "No record information");
+                    sendResponse(exchange, 407, "Content type is not application/json");
                 }
             } else {
-                sendResponse(exchange, 407, "Content type is not application/json");
+                sendResponse(exchange, 411, "No content type in request");
             }
-        } else {
-            sendResponse(exchange, 411, "No content type in request");
+        } catch (Exception e) {
+            System.out.println("DatarecordHandler > handlePost > Something went wrong");
+            sendResponse(exchange, 500, "handlePostException");
         }
     }
+
+
+    private void handlePut(HttpExchange exchange) throws IOException {
+        try {
+            Headers headers = exchange.getRequestHeaders();
+            if (headers.containsKey("Content-Type")) {
+                if (headers.get("Content-Type").get(0).equalsIgnoreCase("application/json")) {
+                    //System.out.println("DatarecordHandler > handlePost > We got record post request");
+
+                    //GET THE ID
+                    URI requestURI = exchange.getRequestURI();
+                    String query = requestURI.getQuery();
+                    Integer id = Integer.valueOf(query.split("=")[1]);
+                    if (!query.split("=")[0].equals("id")) {
+                        sendResponse(exchange, 400, "wrong id");
+                        return;
+                    }
+                    //
+                    InputStream stream = exchange.getRequestBody();
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
+                    String newRecordText = reader.lines().collect(Collectors.joining("\n"));
+                    reader.close();
+                    stream.close();
+
+                    if (newRecordText != null && newRecordText.length() != 0) {
+                        try {
+                            //BASICS
+                            JSONObject newRecordJson = new JSONObject(newRecordText);
+                            String identifier = newRecordJson.getString("recordIdentifier");
+                            String description = newRecordJson.getString("recordDescription");
+                            String payload = newRecordJson.getString("recordPayload");
+                            String rightAscension = newRecordJson.getString("recordRightAscension");
+                            String declination = newRecordJson.getString("recordDeclination");
+
+                            //OWNER
+                            String owner;
+                            String ownerUsername = getUsernameFromAuth(exchange);
+                            if (newRecordJson.has("recordOwner")) {
+                                owner = newRecordJson.getString("recordOwner");
+                            } else {
+                                owner = userAuthenticator.getNickname(ownerUsername);
+                            }
+
+                            //CHECK THE RECORD IN DB
+                            ObservationRecord r = db.getRecordById(id);
+                            //System.out.println(newRecordJson);
+                            if (r == null) {
+                                sendResponse(exchange, 400, "wrong id");
+                                return;
+                            }
+                            if (!r.getOwnerUsername().equals(ownerUsername)) {
+                                sendResponse(exchange, 400, "wrong user");
+                                //System.out.println("DatarecordHandler > handlePutt > wrong user " + ownerUsername + " " + r.getOwnerUsername());
+                                return;
+                            }
+
+                            //INITIAL TIME
+                            String dateText = newRecordJson.getString("recordTimeReceived");
+
+                            //OBSERVATORY
+                            boolean isObservatoryPresent = false;
+                            String observatoryName = null;
+                            Double latitude = 0.0;
+                            Double longitude = 0.0;
+                            if (newRecordJson.has("observatory")) {
+                                JSONArray observatoryArray = newRecordJson.getJSONArray("observatory");
+                                if (observatoryArray.length() > 0) {
+                                    isObservatoryPresent = true;
+                                    JSONObject observatory = observatoryArray.getJSONObject(0);
+                                    observatoryName = observatory.getString("observatoryName");
+                                    latitude = observatory.getDouble("latitude");
+                                    longitude = observatory.getDouble("longitude");
+                                }
+                            }
+
+                            //WEATHER
+                            JSONObject observatoryWeather = null;
+                            boolean isWeatherPresent = false;
+                            Double temperatureInKelvins = -1.0;
+                            Double cloudinessPercentance = 0.0;
+                            Double bagroundLightVolume = 0.0;
+                            if (newRecordJson.has("observatoryWeather")) {
+                                isWeatherPresent = true;
+                                observatoryWeather = WeatherManager.getWeather(latitude, longitude, dateText);
+                                temperatureInKelvins = observatoryWeather.getDouble("temperatureInKelvins");
+                                cloudinessPercentance = observatoryWeather.getDouble("cloudinessPercentance");
+                                bagroundLightVolume = observatoryWeather.getDouble("bagroundLightVolume");  
+                            }
+
+                            //UPDATE INFO
+                            ZonedDateTime date = ZonedDateTime.now(ZoneId.of("UTC"));
+                            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSX");
+                            String updateDateText = date.format(formatter);
+
+                            String updateReason = "N/A";
+                            System.out.println(newRecordJson);
+                            if (newRecordJson.has("updateReason")) {
+                                updateReason = newRecordJson.getString("updateReason");
+                            }
+
+
+                            //System.out.println("DatarecordHandler > handlePost > RightAscension = " + rightAscension);
+                            if (!(identifier == null || identifier.isEmpty() || newRecordJson.get("recordIdentifier") instanceof JSONObject
+                                || description == null || description.isEmpty() || newRecordJson.get("recordDescription") instanceof JSONObject
+                                || payload == null || payload.isEmpty() || newRecordJson.get("recordPayload") instanceof JSONObject
+                                || rightAscension == null || rightAscension.isEmpty() || newRecordJson.get("recordRightAscension") instanceof JSONObject
+                                || declination == null || declination.isEmpty() || newRecordJson.get("recordDeclination") instanceof JSONObject))
+                            {
+                                //System.out.println("DatarecordHandler > handlePost > Adding the record " + identifier + " " + payload);
+                                db.updateRecord(new ObservationRecord(id, identifier, description, payload, rightAscension, 
+                                                                    declination, dateText, owner, isObservatoryPresent, 
+                                                                    observatoryName, latitude, longitude, isWeatherPresent,
+                                                                    temperatureInKelvins, cloudinessPercentance, bagroundLightVolume,
+                                                                    ownerUsername, updateReason, updateDateText));
+                                sendResponse(exchange, 200, "Record added");
+                            } else {
+                                sendResponse(exchange, 413, "No proper record information");
+                            }
+                        } catch (JSONException e) {
+                            System.out.println(e.getMessage());
+                            System.out.println("DatarecordHandler > handlePost > Json parse error, faulty record json \n" + newRecordText);
+                            sendResponse(exchange, 413, "No proper record information");
+                        } 
+                    } else {
+                        sendResponse(exchange, 412, "No record information");
+                    }
+                } else {
+                    sendResponse(exchange, 407, "Content type is not application/json");
+                }
+            } else {
+                sendResponse(exchange, 411, "No content type in request");
+            }
+        } catch (Exception e) {
+            System.out.println("DatarecordHandler > handlePutt > Something went wrong \n" + e.getMessage());
+            sendResponse(exchange, 400, "handlePutException");
+        }
+    }
+
 
     private void sendResponse(HttpExchange exchange, int code, String message) throws IOException {
         exchange.sendResponseHeaders(code, message.getBytes("UTF-8").length);
@@ -197,19 +366,23 @@ public class DatarecordHandler implements HttpHandler {
         stream.close();
     }
 
+
     @Override
     public void handle(HttpExchange exchange) throws IOException {
+        //System.out.println("DatarecordHandler > handle > Request handled in thread " + Thread.currentThread().threadId());
         String method = exchange.getRequestMethod().toUpperCase();
 
         if ("GET".equals(method)) {
-            System.out.println("we got get request");
+            //System.out.println("DatarecordHandler > handle > We got get request");
             handleGet(exchange);
-
         } else if ("POST".equals(method)) {
-            System.out.println("we got post request");
+            //System.out.println("DatarecordHandler > handle > We got post request");
             handlePost(exchange);
+        } else if ("PUT".equals(method)) {
+            //System.out.println("DatarecordHandler > handle > We got post request");
+            handlePut(exchange);
         } else {
-            System.out.println("we got other request");
+            //System.out.println("DatarecordHandler > handle > We got other request");
             sendResponse(exchange, 400, "Not supported");
         }
     }
