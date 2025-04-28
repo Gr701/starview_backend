@@ -1,6 +1,8 @@
 # Programming 3 assignment
 
-Student Number: Y########
+Student Number: 2307308
+Name: Mark Suvorov
+Features implemented: 5, 7 and 6 added as improvement. 
 
 ## Introduction
 

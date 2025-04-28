@@ -31,7 +31,7 @@ public class WeatherManager {
             //System.out.println(response.body());
             return pasrseXML(response.body());
         } catch (Exception e) {
-            System.out.println("WeatherManager > getTemperature > Exception");
+            System.out.println("WeatherManager > getWeather > Exception");
         }
         return null;
     }

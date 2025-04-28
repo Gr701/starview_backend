@@ -43,7 +43,7 @@ public class DatarecordHandler implements HttpHandler {
             return;
         }
 
-        ArrayList<ObservationRecord> messages = db.getRecords();
+        ArrayList<ObservationRecord> messages = db.getRecords(); 
         JSONArray responseMessages = new JSONArray();
         for (ObservationRecord r : messages) {
             JSONObject obj = new JSONObject();
@@ -352,7 +352,7 @@ public class DatarecordHandler implements HttpHandler {
                 sendResponse(exchange, 411, "No content type in request");
             }
         } catch (Exception e) {
-            System.out.println("DatarecordHandler > handlePutt > Something went wrong \n" + e.getMessage());
+            System.out.println("DatarecordHandler > handlePut > Something went wrong \n" + e.getMessage());
             sendResponse(exchange, 400, "handlePutException");
         }
     }

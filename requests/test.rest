@@ -36,7 +36,7 @@ GET https://localhost:8001/datarecord
 Authorization: Basic user2:password2
 
 ###
-GET GET https://localhost:8001
+GET https://localhost:8001
 
 ###
 POST https://localhost:8001/datarecord
@@ -56,10 +56,14 @@ POST https://localhost:8001/datarecord
 Content-Type: application/json
 Authorization: Basic user2:password2
 
- {
-    "recordRightAscension":"4h 14m 33s",
-    "recordPayload":{},
-    "recordDeclination":"+15° 45' 2\"",
-    "recordDescription":{},
-    "recordIdentifier":{}
- }
+{
+"recordRightAscension":"4h 14m 33s",
+"recordPayload":{},
+"recordDeclination":"+15° 45' 2\"",
+"recordDescription":{},
+"recordIdentifier":{}
+}
+
+###
+GET https://localhost:8001/search
+Authorization: Basic user2:password2

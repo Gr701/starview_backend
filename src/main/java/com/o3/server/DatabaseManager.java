@@ -289,6 +289,66 @@ public class DatabaseManager {
         return record; 
     }
 
+    public ArrayList<ObservationRecord> serchRecords(String identifier, String owner, String before, String after) {
+        ArrayList<ObservationRecord> records = new ArrayList<ObservationRecord>();
+        ArrayList<String> parameters = new ArrayList<>();
+        String query = "SELECT * FROM records WHERE 1 = 1";
+        if (identifier != null) {
+            query += " AND recordIdentifier = ?";
+            parameters.add(identifier);
+        } 
+        if (owner != null) {
+            query += " AND recordOwner = ?";
+            parameters.add(owner);
+        }
+        if (before != null) {
+            query += " AND recordTimeReceived < ?";
+            parameters.add(before);
+        }
+        if (after != null) {
+            query += " AND recordTimeReceived > ?";
+            parameters.add(after);
+        }
+
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            for (int i = 0; i < parameters.size(); i++) {
+                stmt.setString(i + 1, parameters.get(i));
+            }
+            try (ResultSet results = stmt.executeQuery()) {
+                while (results.next()) {
+                    boolean isObservatoryPresent = (results.getString("observatoryName") == null) ? false : true;
+                    boolean isWeatherPresent = (results.getDouble("temperatureInKelvins") == -1.0) ? false : true;
+                    ObservationRecord record = new ObservationRecord(
+                        results.getInt("id"),
+                        results.getString("recordIdentifier"),
+                        results.getString("recordDescription"),
+                        results.getString("recordPayload"),
+                        results.getString("recordRightAscension"),
+                        results.getString("recordDeclination"),
+                        results.getString("recordTimeReceived"),
+                        results.getString("recordOwner"),
+                        isObservatoryPresent,
+                        results.getString("observatoryName"),
+                        results.getDouble("latitude"),
+                        results.getDouble("longitude"),
+                        isWeatherPresent,
+                        results.getDouble("temperatureInKelvins"),
+                        results.getDouble("cloudinessPercentance"),
+                        results.getDouble("bagroundLightVolume"),
+                        results.getString("ownerUsername"),
+                        results.getString("updateReason"),
+                        results.getString("modified")
+                    );
+                    records.add(record);
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("DatabaseManager > searchRecords > SQLException \n" + e.getMessage());
+        }
+
+        return records;
+    }
+
     public boolean isRecordTableEmpty() {
         try (
             PreparedStatement stmt = connection.prepareStatement("SELECT COUNT(*) FROM records");

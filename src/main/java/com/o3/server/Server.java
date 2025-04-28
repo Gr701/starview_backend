@@ -69,6 +69,9 @@ public class Server {
             HttpContext datarecordContext = server.createContext("/datarecord", new DatarecordHandler(userAuthenticator));
             datarecordContext.setAuthenticator(userAuthenticator);
 
+            HttpContext searchContext = server.createContext("/search", new SearchHandler());
+            searchContext.setAuthenticator(userAuthenticator);
+
             server.createContext("/registration", new RegistrationHandler(userAuthenticator)); 
 
             // creates a default executor
