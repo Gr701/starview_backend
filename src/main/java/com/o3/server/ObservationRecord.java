@@ -87,6 +87,7 @@ public class ObservationRecord {
         this.ratingCount = ratingCount;
     }
 
+    //GETTERS
     public Integer getId() {return id;}
 
     public String getIdentifier() {return identifier;}
@@ -114,4 +115,40 @@ public class ObservationRecord {
     public Integer getViewCount() {return viewCount;}
     public Double getRating() {return rating;}
     public Integer getRatingCount() {return ratingCount;}
+
+    //SETTERS
+    public void setIdentifier (String identifier) {this.identifier = identifier;}
+    public void setDescription (String description) {this.description = description;}
+    public void setPayload (String payload) {this.payload = payload;}
+    public void setRightAscension (String rightAscension) {this.rightAscension = rightAscension;}
+    public void setDeclination (String declination) {this.declination = declination;}
+
+    public void setIsObservatoryPresent (boolean isObservatoryPresent) 
+        {this.isObservatoryPresent = isObservatoryPresent;}
+    public void setObservatoryName (String observatoryName) {this.observatoryName = observatoryName;}
+    public void setLatitude (Double latitude) {this.latitude = latitude;}
+    public void setLongitude (Double longitude) {this.longitude = longitude;}
+
+    public void setIsWeatherPresent (boolean isWeatherPresent) 
+        {this.isWeatherPresent = isWeatherPresent;}
+    public void setTemperatureInKelvins (Double temperatureInKelvins) 
+        {this.temperatureInKelvins = temperatureInKelvins;}
+    public void setCloudinessPercentance (Double cloudinessPercentance) 
+        {this.cloudinessPercentance = cloudinessPercentance;}
+    public void setBagroundLightVolume (Double bagroundLightVolume) 
+        {this.bagroundLightVolume = bagroundLightVolume;}
+
+    public void setOwnerUsername (String ownerUsername) {this.ownerUsername = ownerUsername;}
+    public void setUpdateReason (String updateReason) {this.updateReason = updateReason;}
+    public void setModified (String modified) {this.modified = modified;}
+
+    //OTHER
+    public void addView() {
+        viewCount += 1;
+    }
+
+    public void updateRating(int rating) {
+        this.rating = (this.rating * ratingCount + rating) / (ratingCount + 1);
+        ratingCount += 1;
+    }
 }

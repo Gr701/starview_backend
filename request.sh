@@ -30,19 +30,60 @@ EOF
                 -H "Content-Type: application/json" \
                 -d @- <<EOF
 {
+    "editType": "editRecord",
+    "updateReason": "testiiiiiing",
     "recordIdentifier": "JupiterBoba",
-    "userEdit": null,
-    "addView": null,
-    "recordRating": 20,
     "recordDescription": "Notes about Jupiter during observation",
     "recordPayload": "Jupiter great red spot noticed, no changes related to previousobservation",
     "recordRightAscension": "05h 11m 42s",
-    "recordDeclination": "+22° 15' 54\""
+    "recordDeclination": "+22° 15' 54\"",
+    "observatory": {
+        "observatoryName": "boba_telescopa",
+        "latitude": "2",
+        "longitude": "2.1241421"
+    },
+}
+EOF
+            ;;
+
+        add_view)
+            echo "Adding view json..."
+            curl --include --insecure -v -u user1:password1 -X PUT "$server/datarecord?id=1" \
+                -H "Content-Type: application/json" \
+                -d @- <<EOF
+{
+    "editType": "addView",
+}
+EOF
+            ;;
+
+        rate)
+            echo "Adding view json..."
+            curl --include --insecure -v -u user1:password1 -X PUT "$server/datarecord?id=1" \
+                -H "Content-Type: application/json" \
+                -d @- <<EOF
+{
+    "editType": "updateRating",
+    "rating": "1",
 }
 EOF
             ;;
         
-        3|reg)
+        reg_1)
+            echo "Registering user1..."
+            curl --include --insecure -X POST "$server/registration" \
+                -H "Content-Type: application/json" \
+                -d @- <<EOF       
+{
+    "username": "user1",
+    "password": "password1",
+    "email": "",
+    "userNickname": "sisiki"
+}
+EOF
+            ;;
+
+        reg_2)
             echo "Registering user2..."
             curl --include --insecure -X POST "$server/registration" \
                 -H "Content-Type: application/json" \
