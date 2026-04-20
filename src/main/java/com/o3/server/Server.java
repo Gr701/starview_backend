@@ -71,8 +71,12 @@ public class Server {
 
             HttpContext searchContext = server.createContext("/search", new SearchHandler());
             searchContext.setAuthenticator(userAuthenticator);
+            
+            HttpContext profileContext = server.createContext("/profile", new ProfileHandler());
+            profileContext.setAuthenticator(userAuthenticator);
 
             server.createContext("/registration", new RegistrationHandler(userAuthenticator)); 
+            
 
             // creates a default executor
             //server.setExecutor(null); 
@@ -85,6 +89,5 @@ public class Server {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        
     }
 }

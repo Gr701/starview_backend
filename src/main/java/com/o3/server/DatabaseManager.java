@@ -35,7 +35,7 @@ public class DatabaseManager {
                 + "login VARCHAR(50) NOT NULL UNIQUE, "
                 + "password VARCHAR(250) NOT NULL, " 
                 + "email VARCHAR(50) NOT NULL, " 
-                + "nickname VARCHAR(50) NOT NULL)";
+                + "nickname VARCHAR(50) NOT NULL UNIQUE)";
             
             String createRecordsTable = "CREATE TABLE IF NOT EXISTS records ("
                 + "id INTEGER PRIMARY KEY AUTOINCREMENT, " 
@@ -54,12 +54,17 @@ public class DatabaseManager {
                 + "bagroundLightVolume DOUBLE, "
                 + "ownerUsername VARCHAR(50), "
                 + "updateReason VARCHAR(50), "
-                + "modified VARCHAR(50))";
+                + "modified VARCHAR(50), "
+                + "viewCount INTEGER, " 
+                + "rating DOUBLE, "
+                + "ratingCount INTEGER)";
 
             try (Statement stmt = connection.createStatement()) {
                 stmt.executeUpdate(createUsersTable);
                 stmt.executeUpdate(createRecordsTable);
                 System.out.println("DatabaseManager > init > Database successfully created");
+            } catch (SQLException e) {
+                System.out.println("DatabaseManager > init > SQLException > " + e);
             }
             return true;
         } else {
@@ -95,7 +100,7 @@ public class DatabaseManager {
         }
     }
 
-    public void addUser(User user) {
+    public boolean addUser(User user) {
 
         String insertUserRow = "INSERT INTO users (login, password, email, nickname) "
             + "VALUES (?, ?, ?, ?)";
@@ -110,7 +115,9 @@ public class DatabaseManager {
             }
         } catch (SQLException e) {
             System.out.println("DatabaseManager > addUser > SQLException > \n" + e.getMessage());
+            return false;
         }
+        return true;
     }
 
     public User getUser(String login) {
@@ -139,8 +146,9 @@ public class DatabaseManager {
             + "(recordIdentifier, recordDescription, recordPayload, recordRightAscension, "
             + "recordDeclination, recordTimeReceived, recordOwner, observatoryName, "
             + "latitude, longitude, temperatureInKelvins, cloudinessPercentance, "
-            + "bagroundLightVolume, ownerUsername, updateReason, modified) "
-            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            + "bagroundLightVolume, ownerUsername, updateReason, modified, "
+            + "viewCount, rating, ratingCount) "
+            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = connection.prepareStatement(insertRecordRow)) {
             stmt.setString(1, record.getIdentifier());
             stmt.setString(2, record.getDescription());
@@ -158,6 +166,9 @@ public class DatabaseManager {
             stmt.setString(14, record.getOwnerUsername());
             stmt.setString(15, record.getUpdateReason());
             stmt.setString(16, record.getModified());
+            stmt.setInt(17, record.getViewCount());
+            stmt.setDouble(18, record.getRating());
+            stmt.setInt(19, record.getRatingCount());
         
             //System.out.println("DatabaseManager > addRecord > Record adding 2");
             if (stmt.executeUpdate() > 0) {
@@ -169,6 +180,7 @@ public class DatabaseManager {
     }
 
     public void updateRecord(ObservationRecord record) {
+        System.out.println("DatabaseManager > updateRecord called with record identifier" + record.getIdentifier());
         String updateRecordRow = "UPDATE records SET "
             + "recordIdentifier = ?, "
             + "recordDescription = ?, "
@@ -185,7 +197,10 @@ public class DatabaseManager {
             + "bagroundLightVolume = ?, "
             + "ownerUsername = ?, "
             + "updateReason = ?, "
-            + "modified = ? "
+            + "modified = ? ,"
+            + "viewCount = ? ,"
+            + "rating = ? ,"
+            + "ratingCount = ? "
             + "WHERE id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(updateRecordRow)) {
             stmt.setString(1, record.getIdentifier());
@@ -204,11 +219,14 @@ public class DatabaseManager {
             stmt.setString(14, record.getOwnerUsername());
             stmt.setString(15, record.getUpdateReason());
             stmt.setString(16, record.getModified());
-            stmt.setInt(17, record.getId());
+            stmt.setInt(17, record.getViewCount());
+            stmt.setDouble(18, record.getRating());
+            stmt.setInt(19, record.getRatingCount());
+            stmt.setInt(20, record.getId());
 
             stmt.executeUpdate();
         } catch (SQLException e) {
-            System.out.println("DatabaseManager > upadateRecord > SQLException");
+            System.out.println("DatabaseManager > upadateRecord > SQLException > " + e);
         }
     }
 
@@ -240,7 +258,10 @@ public class DatabaseManager {
                     results.getDouble("bagroundLightVolume"),
                     results.getString("ownerUsername"),
                     results.getString("updateReason"),
-                    results.getString("modified")
+                    results.getString("modified"),
+                    results.getInt("viewCount"),
+                    results.getDouble("rating"),
+                    results.getInt("ratingCount")
                 );
                 records.add(record);
             }
@@ -279,7 +300,10 @@ public class DatabaseManager {
                         results.getDouble("bagroundLightVolume"),
                         results.getString("ownerUsername"),
                         results.getString("updateReason"),
-                        results.getString("modified")
+                        results.getString("modified"),
+                        results.getInt("viewCount"),
+                        results.getDouble("rating"),
+                        results.getInt("ratingCount")
                     );
                 }
             }
@@ -337,7 +361,10 @@ public class DatabaseManager {
                         results.getDouble("bagroundLightVolume"),
                         results.getString("ownerUsername"),
                         results.getString("updateReason"),
-                        results.getString("modified")
+                        results.getString("modified"),
+                        results.getInt("viewCount"),
+                        results.getDouble("rating"),
+                        results.getInt("ratingCount")
                     );
                     records.add(record);
                 }

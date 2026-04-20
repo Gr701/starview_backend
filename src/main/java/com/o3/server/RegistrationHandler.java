@@ -24,7 +24,17 @@ public class RegistrationHandler implements HttpHandler {
         userAuthenticator = ua;
     }
 
+    private void addCorsHeaders(HttpExchange exchange) {
+        Headers h = exchange.getResponseHeaders();
+
+        h.add("Access-Control-Allow-Origin", "http://localhost:8000");
+        h.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        h.add("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    }
+
     private void sendResponse(HttpExchange exchange, int code, String message) throws IOException {
+        addCorsHeaders(exchange);
+
         exchange.sendResponseHeaders(code, message.getBytes("UTF-8").length);
         OutputStream os = exchange.getResponseBody();
         os.write(message.getBytes());
@@ -36,7 +46,10 @@ public class RegistrationHandler implements HttpHandler {
     public void handle(HttpExchange exchange) throws IOException {
         String method = exchange.getRequestMethod().toUpperCase();
 
-        if ("POST".equals(method)) {
+        if ("OPTIONS".equals(method)) {
+            addCorsHeaders(exchange);
+            exchange.sendResponseHeaders(204, -1);
+        } else if ("POST".equals(method)) {
             Headers headers = exchange.getRequestHeaders();
             if (headers.containsKey("Content-Type")) {
                 if (headers.get("Content-Type").get(0).equalsIgnoreCase("application/json")) {
@@ -56,7 +69,7 @@ public class RegistrationHandler implements HttpHandler {
                             String email = newUserJson.getString("email");
                             String userNickname = newUserJson.getString("userNickname");
 
-                            if (username.length() != 0 && password.length() != 0) {
+                            if (username.length() != 0 && password.length() != 0 && userNickname.length() != 0) {
                                 //System.out.println("RegistrationHandler > handle > Registering user " + username + " " + password);
                                 if (userAuthenticator.addUser(username, password, email, userNickname)) {
                                     sendResponse(exchange, 200, "User registred");
@@ -83,5 +96,4 @@ public class RegistrationHandler implements HttpHandler {
             sendResponse(exchange, 400, "Not supported");
         }
     }
-    
 }

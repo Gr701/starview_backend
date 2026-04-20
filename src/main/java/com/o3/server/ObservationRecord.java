@@ -25,6 +25,10 @@ public class ObservationRecord {
     private String updateReason;
     private String modified;
 
+    private Integer viewCount;
+    private Double rating;
+    private Integer ratingCount;
+
     public ObservationRecord (
         Integer id,
 
@@ -48,7 +52,11 @@ public class ObservationRecord {
 
         String ownerUsername,
         String updateReason,
-        String modified
+        String modified,
+
+        Integer viewCount,
+        Double rating,
+        Integer ratingCount
     ) {
         this.id = id;
 
@@ -73,6 +81,10 @@ public class ObservationRecord {
         this.ownerUsername = ownerUsername;
         this.updateReason = updateReason;
         this.modified = modified;
+
+        this.viewCount = viewCount;
+        this.rating = rating;
+        this.ratingCount = ratingCount;
     }
 
     public Integer getId() {return id;}
@@ -98,4 +110,8 @@ public class ObservationRecord {
     public String getOwnerUsername() {return ownerUsername;}
     public String getUpdateReason() {return updateReason;}
     public String getModified() {return modified;}
+
+    public Integer getViewCount() {return viewCount;}
+    public Double getRating() {return rating;}
+    public Integer getRatingCount() {return ratingCount;}
 }

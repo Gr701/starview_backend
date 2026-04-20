@@ -129,7 +129,6 @@ public class SearchHandler implements HttpHandler {
         } catch (IOException e) {
             System.out.println("SearchHandler > sendResponse > Something went wrong \n" + e.getMessage());
         }
-        
     }
 
     @Override

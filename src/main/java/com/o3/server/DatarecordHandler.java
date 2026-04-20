@@ -56,6 +56,9 @@ public class DatarecordHandler implements HttpHandler {
             obj.put("recordDeclination", r.getDeclination());
             obj.put("recordTimeReceived", r.getTimeReceived());
             obj.put("recordOwner", r.getOwner());
+            obj.put("recordViewCount", r.getViewCount());
+            obj.put("recordRating", r.getRating());
+            obj.put("recordRatingCount", r.getRatingCount());
 
             if (r.getIsObservatoryPresent()) {
                 JSONObject observatory = new JSONObject();
@@ -133,11 +136,16 @@ public class DatarecordHandler implements HttpHandler {
                         try {
                             //BASICS
                             JSONObject newRecordJson = new JSONObject(newRecordText);
+
                             String identifier = newRecordJson.getString("recordIdentifier");
                             String description = newRecordJson.getString("recordDescription");
                             String payload = newRecordJson.getString("recordPayload");
                             String rightAscension = newRecordJson.getString("recordRightAscension");
                             String declination = newRecordJson.getString("recordDeclination");
+
+                            //Integer viewCount = newRecordJson.getInt("recordViewCount");
+                            //Double rating = newRecordJson.getDouble("recordRating");
+                            //Interger ratingCount = newRecordJson.getInt("recordRatingCount");
 
                             //OWNER
                             String owner;
@@ -185,18 +193,31 @@ public class DatarecordHandler implements HttpHandler {
                              
 
                             //System.out.println("DatarecordHandler > handlePost > RightAscension = " + rightAscension);
-                            if (!(identifier == null || identifier.isEmpty() || newRecordJson.get("recordIdentifier") instanceof JSONObject
-                                || description == null || description.isEmpty() || newRecordJson.get("recordDescription") instanceof JSONObject
-                                || payload == null || payload.isEmpty() || newRecordJson.get("recordPayload") instanceof JSONObject
-                                || rightAscension == null || rightAscension.isEmpty() || newRecordJson.get("recordRightAscension") instanceof JSONObject
-                                || declination == null || declination.isEmpty() || newRecordJson.get("recordDeclination") instanceof JSONObject))
+                            if (!(identifier == null 
+                                || identifier.isEmpty() 
+                                || newRecordJson.get("recordIdentifier") instanceof JSONObject
+                                || description == null 
+                                || description.isEmpty() 
+                                || newRecordJson.get("recordDescription") instanceof JSONObject
+                                || payload == null 
+                                || payload.isEmpty() 
+                                || newRecordJson.get("recordPayload") instanceof JSONObject
+                                || rightAscension == null 
+                                || rightAscension.isEmpty() 
+                                || newRecordJson.get("recordRightAscension") instanceof JSONObject
+                                || declination == null 
+                                || declination.isEmpty() 
+                                || newRecordJson.get("recordDeclination") instanceof JSONObject))
                             {
                                 //System.out.println("DatarecordHandler > handlePost > Adding the record " + identifier + " " + payload);
-                                db.addRecord(new ObservationRecord(null, identifier, description, payload, rightAscension, 
-                                                                    declination, dateText, owner, isObservatoryPresent, 
-                                                                    observatoryName, latitude, longitude, isWeatherPresent,
-                                                                    temperatureInKelvins, cloudinessPercentance, bagroundLightVolume,
-                                                                    ownerUsername, null, null));
+                                db.addRecord(new ObservationRecord(
+                                    null, identifier, description, 
+                                    payload, rightAscension, declination, dateText, owner, 
+                                    isObservatoryPresent, observatoryName, latitude, 
+                                    longitude, isWeatherPresent, temperatureInKelvins, 
+                                    cloudinessPercentance, bagroundLightVolume, ownerUsername, 
+                                    null, null, 0, 0.0, 0
+                                ));
                                 sendResponse(exchange, 200, "Record added");
                             } else {
                                 sendResponse(exchange, 413, "No proper record information");
@@ -229,12 +250,17 @@ public class DatarecordHandler implements HttpHandler {
                     //System.out.println("DatarecordHandler > handlePost > We got record post request");
 
                     //GET THE ID
-                    URI requestURI = exchange.getRequestURI();
-                    String query = requestURI.getQuery();
-                    Integer id = Integer.valueOf(query.split("=")[1]);
-                    if (!query.split("=")[0].equals("id")) {
-                        sendResponse(exchange, 400, "wrong id");
-                        return;
+                    Integer id = null;
+                    try {
+                        URI requestURI = exchange.getRequestURI();
+                        String query = requestURI.getQuery();
+                        id = Integer.valueOf(query.split("=")[1]);
+                        if (!query.split("=")[0].equals("id")) {
+                            sendResponse(exchange, 400, "wrong id");
+                            return;
+                        }
+                    } catch (Exception e) {
+                        System.out.println("DatarecordHandler > handlePut > cannot parse id \n" + e.getMessage());
                     }
                     //
                     InputStream stream = exchange.getRequestBody();
@@ -247,6 +273,7 @@ public class DatarecordHandler implements HttpHandler {
                         try {
                             //BASICS
                             JSONObject newRecordJson = new JSONObject(newRecordText);
+
                             String identifier = newRecordJson.getString("recordIdentifier");
                             String description = newRecordJson.getString("recordDescription");
                             String payload = newRecordJson.getString("recordPayload");
@@ -275,8 +302,23 @@ public class DatarecordHandler implements HttpHandler {
                                 return;
                             }
 
+                            //STATISTICS
+                            Integer viewCount = r.getViewCount();
+                            if (newRecordJson.has("addView")) {
+                                viewCount += 1;
+                            }
+                            Integer ratingCount = r.getRatingCount();
+                            Double rating = r.getRating();
+                            if (newRecordJson.has("recordRating") 
+                                    && !newRecordJson.isNull("recordRating")) {
+                                Double incomingRating = newRecordJson.getDouble("recordRating");
+                                rating = (rating * ratingCount + incomingRating) / (ratingCount + 1);
+                                ratingCount += 1;
+                            }
+                            
                             //INITIAL TIME
-                            String dateText = newRecordJson.getString("recordTimeReceived");
+                            String dateText = r.getTimeReceived();
+                            //newRecordJson.getString("recordTimeReceived");
 
                             //OBSERVATORY
                             boolean isObservatoryPresent = false;
@@ -309,37 +351,53 @@ public class DatarecordHandler implements HttpHandler {
                             }
 
                             //UPDATE INFO
-                            ZonedDateTime date = ZonedDateTime.now(ZoneId.of("UTC"));
-                            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSX");
-                            String updateDateText = date.format(formatter);
+                            String updateReason = r.getUpdateReason();
+                            String updateDateText = r.getModified();
+                            if (newRecordJson.has("userEdit")) {
+                                ZonedDateTime date = ZonedDateTime.now(ZoneId.of("UTC"));
+                                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSX");
+                                updateDateText = date.format(formatter);
 
-                            String updateReason = "N/A";
-                            System.out.println(newRecordJson);
-                            if (newRecordJson.has("updateReason")) {
-                                updateReason = newRecordJson.getString("updateReason");
+                                updateReason = "N/A";
+                                //System.out.println(newRecordJson);
+                                if (newRecordJson.has("updateReason")) {
+                                    updateReason = newRecordJson.getString("updateReason");
+                                }
                             }
 
-
                             //System.out.println("DatarecordHandler > handlePost > RightAscension = " + rightAscension);
-                            if (!(identifier == null || identifier.isEmpty() || newRecordJson.get("recordIdentifier") instanceof JSONObject
-                                || description == null || description.isEmpty() || newRecordJson.get("recordDescription") instanceof JSONObject
-                                || payload == null || payload.isEmpty() || newRecordJson.get("recordPayload") instanceof JSONObject
-                                || rightAscension == null || rightAscension.isEmpty() || newRecordJson.get("recordRightAscension") instanceof JSONObject
-                                || declination == null || declination.isEmpty() || newRecordJson.get("recordDeclination") instanceof JSONObject))
+                            if (!(identifier == null 
+                                || identifier.isEmpty() 
+                                || newRecordJson.get("recordIdentifier") instanceof JSONObject
+                                || description == null 
+                                || description.isEmpty() 
+                                || newRecordJson.get("recordDescription") instanceof JSONObject
+                                || payload == null 
+                                || payload.isEmpty() 
+                                || newRecordJson.get("recordPayload") instanceof JSONObject
+                                || rightAscension == null 
+                                || rightAscension.isEmpty() 
+                                || newRecordJson.get("recordRightAscension") instanceof JSONObject
+                                || declination == null 
+                                || declination.isEmpty() 
+                                || newRecordJson.get("recordDeclination") instanceof JSONObject))
                             {
                                 //System.out.println("DatarecordHandler > handlePost > Adding the record " + identifier + " " + payload);
-                                db.updateRecord(new ObservationRecord(id, identifier, description, payload, rightAscension, 
-                                                                    declination, dateText, owner, isObservatoryPresent, 
-                                                                    observatoryName, latitude, longitude, isWeatherPresent,
-                                                                    temperatureInKelvins, cloudinessPercentance, bagroundLightVolume,
-                                                                    ownerUsername, updateReason, updateDateText));
-                                sendResponse(exchange, 200, "Record added");
+                                db.updateRecord(new ObservationRecord(
+                                    id, identifier, description, payload, rightAscension, 
+                                    declination, dateText, owner, isObservatoryPresent, 
+                                    observatoryName, latitude, longitude, isWeatherPresent,
+                                    temperatureInKelvins, cloudinessPercentance, 
+                                    bagroundLightVolume, ownerUsername, updateReason, updateDateText,
+                                    viewCount, rating, ratingCount
+                                ));
+                                sendResponse(exchange, 200, "Record updated");
                             } else {
                                 sendResponse(exchange, 413, "No proper record information");
                             }
                         } catch (JSONException e) {
                             System.out.println(e.getMessage());
-                            System.out.println("DatarecordHandler > handlePost > Json parse error, faulty record json \n" + newRecordText);
+                            System.out.println("DatarecordHandler > handlePut > Json parse error, faulty record json \n" + newRecordText);
                             sendResponse(exchange, 413, "No proper record information");
                         } 
                     } else {
@@ -370,20 +428,25 @@ public class DatarecordHandler implements HttpHandler {
     @Override
     public void handle(HttpExchange exchange) throws IOException {
         //System.out.println("DatarecordHandler > handle > Request handled in thread " + Thread.currentThread().threadId());
+        System.out.println("DatarecordHandler > handle > we got a request");
         String method = exchange.getRequestMethod().toUpperCase();
-
-        if ("GET".equals(method)) {
-            //System.out.println("DatarecordHandler > handle > We got get request");
-            handleGet(exchange);
-        } else if ("POST".equals(method)) {
-            //System.out.println("DatarecordHandler > handle > We got post request");
-            handlePost(exchange);
-        } else if ("PUT".equals(method)) {
-            //System.out.println("DatarecordHandler > handle > We got post request");
-            handlePut(exchange);
-        } else {
-            //System.out.println("DatarecordHandler > handle > We got other request");
-            sendResponse(exchange, 400, "Not supported");
+        try {
+            if ("GET".equals(method)) {
+                //System.out.println("DatarecordHandler > handle > We got get request");
+                handleGet(exchange);
+            } else if ("POST".equals(method)) {
+                //System.out.println("DatarecordHandler > handle > We got post request");
+                handlePost(exchange);
+            } else if ("PUT".equals(method)) {
+                //System.out.println("DatarecordHandler > handle > We got put request");
+                handlePut(exchange);
+            } else {
+                //System.out.println("DatarecordHandler > handle > We got other request");
+                sendResponse(exchange, 400, "Not supported");
+            }
+        } catch (Exception e) {
+            System.out.println("DatarecordHandler > handle > Exception > " + e);
+            e.printStackTrace(System.out); 
         }
     }
 }
