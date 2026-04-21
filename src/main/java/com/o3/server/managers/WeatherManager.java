@@ -1,4 +1,4 @@
-package com.o3.server;
+package com.o3.server.managers;
 
 import java.net.URI;
 import java.net.http.HttpClient;

@@ -1,4 +1,4 @@
-package com.o3.server;
+package com.o3.server.handlers;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -11,9 +11,11 @@ import org.json.JSONObject;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
+import com.o3.server.managers.DatabaseManager;
+import com.o3.server.models.ObservationRecord;
+
 public class SearchHandler implements HttpHandler {
-    
-    
+       
     private DatabaseManager db;
 
     public SearchHandler() {

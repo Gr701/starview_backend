@@ -1,4 +1,4 @@
-package com.o3.server;
+package com.o3.server.managers;
 
 import java.security.SecureRandom;
 import java.util.Base64;
@@ -9,12 +9,15 @@ import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpPrincipal;
 import com.sun.net.httpserver.HttpExchange;
 
-public class UserAuthenticator extends BasicAuthenticator {
+import com.o3.server.managers.DatabaseManager;
+import com.o3.server.models.User;
+
+public class AuthenticationManager extends BasicAuthenticator {
 
     private DatabaseManager db;
     private SecureRandom secureRandom;
 
-    public UserAuthenticator () {
+    public AuthenticationManager () {
         super("datarecord");
         secureRandom = new SecureRandom();
         db = DatabaseManager.getInstance();

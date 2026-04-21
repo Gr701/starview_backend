@@ -1,4 +1,4 @@
-package com.o3.server;
+package com.o3.server.handlers;
 
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
@@ -10,6 +10,9 @@ import java.util.Base64;
 
 import org.json.JSONObject;
 import org.json.JSONException;
+
+import com.o3.server.managers.DatabaseManager;
+import com.o3.server.models.User;
 
 public class ProfileHandler implements HttpHandler {
     

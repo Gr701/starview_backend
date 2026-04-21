@@ -1,4 +1,4 @@
-package com.o3.server;
+package com.o3.server.models;
 
 public class User {
     private String login;

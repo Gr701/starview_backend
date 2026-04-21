@@ -1,4 +1,4 @@
-package com.o3.server;
+package com.o3.server.models;
 
 public class ObservationRecord {
     private Integer id;
@@ -28,6 +28,36 @@ public class ObservationRecord {
     private Integer viewCount;
     private Double rating;
     private Integer ratingCount;
+
+    public ObservationRecord () {
+        id = null;
+
+        identifier = "";
+        description = "";
+        payload = "";
+        rightAscension = "";
+        declination = "";
+        timeReceived = "";
+        owner = "";
+
+        isObservatoryPresent = false;
+        observatoryName = "";
+        latitude = 0.0;
+        longitude = 0.0;
+
+        isWeatherPresent = false;
+        temperatureInKelvins = -1.0;
+        cloudinessPercentance = 0.0;
+        bagroundLightVolume = 0.0;
+
+        ownerUsername = "";
+        updateReason = "";
+        modified = "";
+
+        viewCount = 0;
+        rating = 0.0; 
+        ratingCount = 0;
+    }
 
     public ObservationRecord (
         Integer id,
@@ -122,6 +152,8 @@ public class ObservationRecord {
     public void setPayload (String payload) {this.payload = payload;}
     public void setRightAscension (String rightAscension) {this.rightAscension = rightAscension;}
     public void setDeclination (String declination) {this.declination = declination;}
+    public void setTimeReceived (String timeReceived) {this.timeReceived = timeReceived;}
+    public void setOwner (String owner) {this.owner = owner;}
 
     public void setIsObservatoryPresent (boolean isObservatoryPresent) 
         {this.isObservatoryPresent = isObservatoryPresent;}

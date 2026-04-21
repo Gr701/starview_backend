@@ -1,7 +1,5 @@
 package com.o3.server;
 
-//package com.viikko1;
-
 import com.sun.net.httpserver.*;
 
 import java.io.FileInputStream;
@@ -14,6 +12,15 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.TrustManagerFactory;
+
+import com.o3.server.managers.AuthenticationManager;
+import com.o3.server.managers.DatabaseManager;
+import com.o3.server.handlers.DatarecordHandler;
+import com.o3.server.handlers.ProfileHandler;
+import com.o3.server.handlers.RegistrationHandler;
+import com.o3.server.handlers.SearchHandler;
+
+
 
 
 public class Server {
@@ -52,7 +59,7 @@ public class Server {
             //create the http server to port 8001 with default logger
             HttpsServer server = HttpsServer.create(new InetSocketAddress(8001),0);
 
-            UserAuthenticator userAuthenticator = new UserAuthenticator();
+            AuthenticationManager userAuthenticator = new AuthenticationManager();
 
             SSLContext sslContext = myServerSSLContext(args);
             server.setHttpsConfigurator(new HttpsConfigurator(sslContext) {

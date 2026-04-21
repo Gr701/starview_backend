@@ -1,4 +1,4 @@
-package com.o3.server;
+package com.o3.server.handlers;
 
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
@@ -15,12 +15,13 @@ import java.util.stream.Collectors;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.o3.server.managers.AuthenticationManager;
 
 public class RegistrationHandler implements HttpHandler {
 
-    private final UserAuthenticator userAuthenticator;
+    private final AuthenticationManager userAuthenticator;
 
-    public RegistrationHandler(UserAuthenticator ua) {
+    public RegistrationHandler(AuthenticationManager ua) {
         userAuthenticator = ua;
     }
 

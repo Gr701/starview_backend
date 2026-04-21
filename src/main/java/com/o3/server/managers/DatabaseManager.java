@@ -1,4 +1,4 @@
-package com.o3.server;
+package com.o3.server.managers;
 
 import java.io.File;
 import java.sql.Connection;
@@ -10,6 +10,9 @@ import java.sql.Statement;
 import java.util.ArrayList;
 
 import org.json.JSONObject;
+
+import com.o3.server.models.User;
+import com.o3.server.models.ObservationRecord;
 
 public class DatabaseManager {
 
