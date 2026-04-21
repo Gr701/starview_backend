@@ -1,24 +1,12 @@
 package com.o3.server.handlers;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Base64;
-import java.util.stream.Collectors;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
@@ -27,6 +15,7 @@ import com.o3.server.managers.DatabaseManager;
 import com.o3.server.managers.WeatherManager;
 import com.o3.server.models.User;
 import com.o3.server.models.ObservationRecord;
+
 import static com.o3.server.handlers.HandlerUtils.*;
 
 public class DatarecordHandler implements HttpHandler {
@@ -36,63 +25,6 @@ public class DatarecordHandler implements HttpHandler {
     public DatarecordHandler(AuthenticationManager ua) {
         userAuthenticator = ua;
         db = DatabaseManager.getInstance();
-    }
-
-    private void handleGet(HttpExchange exchange) throws IOException {
-        //if (messages.isEmpty()) {
-        if (db.isRecordTableEmpty()) {
-            exchange.sendResponseHeaders(204, -1);
-            return;
-        }
-
-        ArrayList<ObservationRecord> messages = db.getRecords(); 
-        JSONArray responseMessages = new JSONArray();
-        for (ObservationRecord r : messages) {
-            JSONObject obj = new JSONObject();
-            obj.put("id", r.getId());
-
-            obj.put("recordIdentifier", r.getIdentifier());
-            obj.put("recordDescription", r.getDescription());
-            obj.put("recordPayload", r.getPayload());
-            obj.put("recordRightAscension", r.getRightAscension());
-            obj.put("recordDeclination", r.getDeclination());
-            obj.put("recordTimeReceived", r.getTimeReceived());
-            obj.put("recordOwner", r.getOwner());
-            obj.put("recordViewCount", r.getViewCount());
-            obj.put("recordRating", r.getRating());
-            obj.put("recordRatingCount", r.getRatingCount());
-
-            if (r.getIsObservatoryPresent()) {
-                JSONObject observatory = new JSONObject();
-                observatory.put("observatoryName", r.getObservatoryName());
-                observatory.put("latitude", r.getLatitude());
-                observatory.put("longitude", r.getLongitude());
-
-                JSONArray observatoryArray = new JSONArray();
-                observatoryArray.put(observatory);
-                obj.put("observatory", observatoryArray);
-            }
-
-            if (r.getIsWeatherPresent()) {
-                JSONObject observatoryWeather = new JSONObject();
-                observatoryWeather.put("temperatureInKelvins", r.getTemperatureInKelvins());
-                observatoryWeather.put("cloudinessPercentance", r.getCloudinessPercentance());
-                observatoryWeather.put("bagroundLightVolume", r.getBagroundLightVolume());
-
-                JSONArray observatoryWeatherArray = new JSONArray();
-                observatoryWeatherArray.put(observatoryWeather);
-                obj.put("observatoryWeather", observatoryWeatherArray);
-            }
-
-            if (r.getModified() != null) {
-                obj.put("updateReason", r.getUpdateReason());
-                obj.put ("modified", r.getModified());
-            }
-
-            responseMessages.put(obj);
-        }
-
-        sendResponse(exchange, 200, responseMessages.toString());
     }
 
     private ObservationRecord addWeatherToRecord(ObservationRecord record) {
@@ -155,9 +87,9 @@ public class DatarecordHandler implements HttpHandler {
     }
 
     private ObservationRecord updateRecordContent(
-            HttpExchange exchange, 
-            ObservationRecord record, 
-            JSONObject json
+        HttpExchange exchange, 
+        ObservationRecord record, 
+        JSONObject json
     ) {
         //check ownership
         String username = getUsernameFromAuth(exchange);
@@ -171,6 +103,51 @@ public class DatarecordHandler implements HttpHandler {
         record = fillRecordFromJson(record, json);
 
         return record;
+    }
+
+    private void handleGet(HttpExchange exchange) {
+        ArrayList<ObservationRecord> messages = db.getRecords(); 
+        JSONArray responseMessages = new JSONArray();
+
+        for (ObservationRecord r : messages) {
+            JSONObject obj = new JSONObject();
+
+            obj.put("id", r.getId());
+            obj.put("recordIdentifier", r.getIdentifier());
+            obj.put("recordDescription", r.getDescription());
+            obj.put("recordPayload", r.getPayload());
+            obj.put("recordRightAscension", r.getRightAscension());
+            obj.put("recordDeclination", r.getDeclination());
+            obj.put("recordTimeReceived", r.getTimeReceived());
+            obj.put("recordOwner", r.getOwner());
+            obj.put("recordViewCount", r.getViewCount());
+            obj.put("recordRating", r.getRating());
+            obj.put("recordRatingCount", r.getRatingCount());
+
+            if (r.getIsObservatoryPresent()) {
+                JSONObject observatory = new JSONObject();
+                observatory.put("observatoryName", r.getObservatoryName());
+                observatory.put("latitude", r.getLatitude());
+                observatory.put("longitude", r.getLongitude());
+                obj.put("observatory", observatory);
+            }
+
+            if (r.getIsWeatherPresent()) {
+                JSONObject observatoryWeather = new JSONObject();
+                observatoryWeather.put("temperatureInKelvins", r.getTemperatureInKelvins());
+                observatoryWeather.put("cloudinessPercentance", r.getCloudinessPercentance());
+                observatoryWeather.put("bagroundLightVolume", r.getBagroundLightVolume());
+                obj.put("observatoryWeather", observatoryWeather);
+            }
+
+            if (r.getModified() != null) {
+                obj.put("updateReason", r.getUpdateReason());
+                obj.put ("modified", r.getModified());
+            }
+
+            responseMessages.put(obj);
+        }
+        sendResponse(exchange, 200, responseMessages.toString());
     }
 
     private void handlePost(HttpExchange exchange) {
@@ -197,8 +174,7 @@ public class DatarecordHandler implements HttpHandler {
         //GET THE CURRENT RECORD
         ObservationRecord record = db.getRecordById(id);
         if (record == null) {
-            sendResponse(exchange, 400, "wrong id, not found");
-            return;
+            throw new RuntimeException("Id not found in the database");
         }
 
         //GET REQUEST JSON
@@ -222,15 +198,14 @@ public class DatarecordHandler implements HttpHandler {
         sendResponse(exchange, 200, "Record updated");
     }
 
-
     @Override
-    public void handle(HttpExchange exchange) throws IOException {
-        //System.out.println("DatarecordHandler > handle > Request handled in thread " + Thread.currentThread().threadId());
-        
+    public void handle(HttpExchange exchange) {
+        //System.out.println("DatarecordHandler > handle > Request handled in 
+        //thread " + Thread.currentThread().threadId());
         System.out.println("DatarecordHandler > handle > we got a request");
+
         String method = exchange.getRequestMethod().toUpperCase();
         try {
-            //System.out.println("DatarecordHandler > handle > We got " + method + " request");
             switch (method) {
                 case "GET":
                     handleGet(exchange);
