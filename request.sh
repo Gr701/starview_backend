@@ -39,7 +39,7 @@ EOF
     "recordDeclination": "+22° 15' 54\"",
     "observatory": {
         "observatoryName": "boba_telescopa",
-        "latitude": "2",
+        "latitude": 90,
         "longitude": "2.1241421"
     },
 }

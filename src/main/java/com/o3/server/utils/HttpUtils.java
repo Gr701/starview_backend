@@ -1,4 +1,4 @@
-package com.o3.server.handlers;
+package com.o3.server.utils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -13,15 +13,21 @@ import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.stream.Collectors;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 
-public final class HandlerUtils {
-    private HandlerUtils () {}
+public final class HttpUtils {
+    private HttpUtils () {}
+
+    public record QueryParams (
+        String identification,
+        String nickname,
+        String before,
+        String after
+    ) {}
 
     public static String getCurrentFormattedTime() {
         ZonedDateTime date = ZonedDateTime.now(ZoneId.of("UTC"));
@@ -76,6 +82,44 @@ public final class HandlerUtils {
         }
     }
 
+    public static QueryParams getSearchParamsFromRequest(HttpExchange exchange) {
+        URI requestURI = exchange.getRequestURI();
+        String query = requestURI.getQuery();
+        
+        if (query == null) {
+            throw new IllegalArgumentException("query is null");
+        }
+
+        String identification = null;
+        String nickname = null;
+        String before = null;
+        String after = null;
+
+        String[] paramPairs = query.split("&");
+        for (String paramPair : paramPairs) {
+            String key = paramPair.split("=")[0];
+            String value = paramPair.split("=")[1];
+            switch (key) {
+                case "identification":
+                    identification = value;
+                    break;
+                case "nickname":
+                    nickname = value;
+                    break;
+                case "before":
+                    before = value;
+                    break;
+                case "after":
+                    after = value;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        return new QueryParams(identification, nickname, before, after);
+    }
+
     public static JSONObject getJsonFromRequest (HttpExchange exchange) {
         String newRecordText;
         try (
@@ -99,37 +143,13 @@ public final class HandlerUtils {
         } 
     }
 
-    public static void checkJsonField (JSONObject json, String key) {
-        if (!json.has(key) || json.isNull(key)) {
-            throw new IllegalArgumentException("Json field " + key + " is missing or null");
-        }
-    }
-
-    public static String getStringFromJson(JSONObject json, String key) {
-        checkJsonField(json, key);
-        try {
-            return json.getString(key);
-        } catch (JSONException e) {
-            throw new IllegalArgumentException("Json value at " + key + " must be a string");
-        }
-    }
-
-    public static Integer getIntegerFromJson(JSONObject json, String key) {
-        checkJsonField(json, key);
-        try {
-            return json.getInt(key);
-        } catch (JSONException e) {
-            throw new IllegalArgumentException("Json value at " + key + " must be an integer");
-        }
-    }
-
-    public static Double getDoubleFromJson(JSONObject json, String key) {
-        checkJsonField(json, key);
-        try {
-            return json.getDouble(key);
-        } catch (JSONException e) {
-            throw new IllegalArgumentException("Json value at " + key + " must be a double");
-        }
+    public static void addCorsHeaders(HttpExchange exchange) {
+        //this method is only for contexts which do not require authenticaiton
+        //there these headers added in authentication too so it would duplicate otherwise
+        Headers h = exchange.getResponseHeaders();
+        h.add("Access-Control-Allow-Origin", "http://localhost:8000");
+        h.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        h.add("Access-Control-Allow-Headers", "Content-Type, Authorization");
     }
 
     public static void sendResponse(HttpExchange exchange, int code, String message) {

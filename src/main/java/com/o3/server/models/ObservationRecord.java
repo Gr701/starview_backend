@@ -1,5 +1,12 @@
 package com.o3.server.models;
 
+import org.json.JSONObject;
+import org.json.JSONException;
+
+import com.o3.server.managers.WeatherManager;
+
+import static com.o3.server.utils.JsonUtils.*;
+
 public class ObservationRecord {
     private Integer id;
 
@@ -182,5 +189,95 @@ public class ObservationRecord {
     public void updateRating(int rating) {
         this.rating = (this.rating * ratingCount + rating) / (ratingCount + 1);
         ratingCount += 1;
+    }
+
+    public JSONObject getJson() {
+        JSONObject json = new JSONObject();
+
+        json.put("id", id);
+        json.put("recordIdentifier", identifier);
+        json.put("recordDescription", description);
+        json.put("recordPayload", payload);
+        json.put("recordRightAscension", rightAscension);
+        json.put("recordDeclination", declination);
+        json.put("recordTimeReceived", timeReceived);
+        json.put("recordOwner", owner);
+        json.put("recordViewCount", viewCount);
+        json.put("recordRating", rating);
+        json.put("recordRatingCount", ratingCount);
+
+        if (isObservatoryPresent) {
+            JSONObject observatory = new JSONObject();
+            observatory.put("observatoryName", observatoryName);
+            observatory.put("latitude", latitude);
+            observatory.put("longitude", longitude);
+            json.put("observatory", observatory);
+        }
+
+        if (isWeatherPresent) {
+            JSONObject observatoryWeather = new JSONObject();
+            observatoryWeather.put("temperatureInKelvins", temperatureInKelvins);
+            observatoryWeather.put("cloudinessPercentance", cloudinessPercentance);
+            observatoryWeather.put("bagroundLightVolume", bagroundLightVolume);
+            json.put("observatoryWeather", observatoryWeather);
+        }
+
+        if (modified != null) {
+            json.put("updateReason", updateReason);
+            json.put ("modified", modified);
+        }
+
+        return json;
+    }
+
+    private void setWeather() {
+        JSONObject weatherJson = WeatherManager.getWeather(
+            latitude, 
+            longitude, 
+            timeReceived
+        );
+        
+        if (weatherJson == null) {
+            throw new RuntimeException("Error adding weather to the observation");
+        }
+
+        try {
+            isWeatherPresent = true;
+            temperatureInKelvins = weatherJson.getDouble("temperatureInKelvins");
+            cloudinessPercentance = weatherJson.getDouble("cloudinessPercentance");
+            bagroundLightVolume = weatherJson.getDouble("bagroundLightVolume");
+        } catch (JSONException e) {
+            throw new RuntimeException("Error adding weather to the observation");
+        }
+    }
+
+    private void setObservatory(JSONObject json) {
+        isObservatoryPresent = true;
+        observatoryName = getStringFromJson(json, "observatoryName");
+        latitude = getDoubleFromJson(json, "latitude");
+        longitude = getDoubleFromJson(json, "longitude");
+
+        if (json.has("observatoryWeather")) {
+            setWeather();
+        }
+    }
+
+    public void setJson(JSONObject json) {
+        //BASICS
+        identifier = getStringFromJson(json, "recordIdentifier");
+        description = getStringFromJson(json, "recordDescription");
+        payload = getStringFromJson(json, "recordPayload");
+        rightAscension = getStringFromJson(json, "recordRightAscension");
+        declination = getStringFromJson(json, "recordDeclination");
+
+        //OBSERVATORY AND WEATHER
+        if (json.has("observatory")) {
+            try { 
+                JSONObject observatoryJson = json.getJSONObject("observatory");
+                setObservatory(observatoryJson);
+            } catch (JSONException e) {
+                throw new IllegalArgumentException("Json observatory field must be a JSONObject");
+            }
+        }
     }
 }

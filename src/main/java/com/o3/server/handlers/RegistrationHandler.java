@@ -17,6 +17,9 @@ import org.json.JSONObject;
 
 import com.o3.server.managers.AuthenticationManager;
 
+import static com.o3.server.utils.HttpUtils.*;
+import static com.o3.server.utils.JsonUtils.*;
+
 public class RegistrationHandler implements HttpHandler {
 
     private final AuthenticationManager userAuthenticator;
@@ -25,76 +28,54 @@ public class RegistrationHandler implements HttpHandler {
         userAuthenticator = ua;
     }
 
-    private void addCorsHeaders(HttpExchange exchange) {
-        Headers h = exchange.getResponseHeaders();
+    private void handlePost(HttpExchange exchange) {
+        checkContentType(exchange);
+        JSONObject json = getJsonFromRequest(exchange);
 
-        h.add("Access-Control-Allow-Origin", "http://localhost:8000");
-        h.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-        h.add("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    }
+        String username = getStringFromJson(json, "username");
+        String password = getStringFromJson(json, "password");
+        String email = getStringFromJson(json, "email");
+        String userNickname = getStringFromJson(json, "userNickname");
 
-    private void sendResponse(HttpExchange exchange, int code, String message) throws IOException {
-        addCorsHeaders(exchange);
+        if (username.isEmpty() || password.isEmpty()) {
+            throw new IllegalArgumentException("password and username cannot be empty");
+        }
 
-        exchange.sendResponseHeaders(code, message.getBytes("UTF-8").length);
-        OutputStream os = exchange.getResponseBody();
-        os.write(message.getBytes());
-        os.flush();
-        os.close();
+        if (userNickname.isEmpty()) {
+            userNickname = username;
+        }
+
+        if (userAuthenticator.addUser(username, password, email, userNickname)) {
+            sendResponse(exchange, 200, "User registred"); 
+        } else {
+            sendResponse(exchange, 405, "User already exists"); 
+        }
     }
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
         String method = exchange.getRequestMethod().toUpperCase();
 
-        if ("OPTIONS".equals(method)) {
-            addCorsHeaders(exchange);
-            exchange.sendResponseHeaders(204, -1);
-        } else if ("POST".equals(method)) {
-            Headers headers = exchange.getRequestHeaders();
-            if (headers.containsKey("Content-Type")) {
-                if (headers.get("Content-Type").get(0).equalsIgnoreCase("application/json")) {
-                    //System.out.println("RegistrationHandler > handle > We got registration post request");
-
-                    InputStream stream = exchange.getRequestBody();
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
-                    String newUserText = reader.lines().collect(Collectors.joining("\n"));
-                    reader.close();
-                    stream.close();
-
-                    if (newUserText != null && newUserText.length() != 0) {
-                        try {
-                            JSONObject newUserJson = new JSONObject(newUserText);
-                            String username = newUserJson.getString("username");
-                            String password = newUserJson.getString("password");
-                            String email = newUserJson.getString("email");
-                            String userNickname = newUserJson.getString("userNickname");
-
-                            if (username.length() != 0 && password.length() != 0 && userNickname.length() != 0) {
-                                //System.out.println("RegistrationHandler > handle > Registering user " + username + " " + password);
-                                if (userAuthenticator.addUser(username, password, email, userNickname)) {
-                                    sendResponse(exchange, 200, "User registred");
-                                } else {
-                                    sendResponse(exchange, 405, "User already exists");
-                                }
-                            } else {
-                                sendResponse(exchange, 413, "No proper user credentials");
-                            }
-                        } catch (JSONException e) {
-                            //System.out.println("RegistrationHandler > handle > Json parse error, faulty user json");
-                            sendResponse(exchange, 413, "No proper user credentials");
-                        } 
-                    } else {
-                        sendResponse(exchange, 412, "No user credentials");
-                    }
-                } else {
-                    sendResponse(exchange, 407, "Content type is not application/json");
-                }
-            } else {
-                sendResponse(exchange, 411, "No content type in request");
+        addCorsHeaders(exchange);
+        try {
+            switch (method) {
+                case "OPTIONS":
+                    exchange.sendResponseHeaders(204, -1);
+                    break;
+                case "POST":
+                    handlePost(exchange);
+                    break;
+                default:
+                    sendResponse(exchange, 405, "Method not allowed");
             }
-        } else {
-            sendResponse(exchange, 400, "Not supported");
+        } catch (IllegalArgumentException e) {
+            sendResponse(exchange, 400, e.getMessage());
+        } catch (RuntimeException e) {
+            sendResponse(exchange, 500, e.getMessage());
+        } catch (Exception e) {
+            System.out.println("RegistrationHandler > handle > Exception > " + method + " > " + e);
+            e.printStackTrace(System.out); 
+            sendResponse(exchange, 500, "Error handling the request");
         }
     }
 }
