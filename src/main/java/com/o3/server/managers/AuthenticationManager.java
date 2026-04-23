@@ -1,7 +1,5 @@
 package com.o3.server.managers;
 
-import java.security.SecureRandom;
-import java.util.Base64;
 import org.apache.commons.codec.digest.Crypt;
 
 import com.sun.net.httpserver.BasicAuthenticator;
@@ -15,22 +13,10 @@ import com.o3.server.models.User;
 public class AuthenticationManager extends BasicAuthenticator {
 
     private DatabaseManager db;
-    private SecureRandom secureRandom;
 
     public AuthenticationManager () {
         super("datarecord");
-        secureRandom = new SecureRandom();
         db = DatabaseManager.getInstance();
-        //wont work since password has to be hashed and salted
-        db.addUser(new User("dummy", "passwd", "dummail", "nikinimi"));
-    }
-
-    public boolean addUser(String login, String password, String email, String nickname) {
-        if (db.getUser(login) == null) {
-            String hashedPassword = securePassword(password);
-            return db.addUser(new User(login, hashedPassword, email, nickname));
-        }
-        return false;
     }
 
     @Override
@@ -50,7 +36,6 @@ public class AuthenticationManager extends BasicAuthenticator {
 
     private void addCorsHeaders(HttpExchange exchange) {
         Headers h = exchange.getResponseHeaders();
-
         h.add("Access-Control-Allow-Origin", "http://localhost:8000");
         h.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
         h.add("Access-Control-Allow-Headers", "Content-Type, Authorization");
@@ -63,17 +48,5 @@ public class AuthenticationManager extends BasicAuthenticator {
             return new Success(new HttpPrincipal("preflight", "what_is_realm"));
         }
         return super.authenticate(exchange);
-    }
-
-    public String getNickname(String login) {
-        return db.getUser(login).getNickname();
-    }
-
-    private String securePassword(String password) {
-        byte bytes[] = new byte[13];
-        secureRandom.nextBytes(bytes);
-        String saltBytes = new String(Base64.getEncoder().encode(bytes));
-        String salt = "$6$" + saltBytes;
-        return Crypt.crypt(password, salt);
     }
 }

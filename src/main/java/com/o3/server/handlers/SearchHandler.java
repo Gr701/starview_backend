@@ -23,36 +23,39 @@ public class SearchHandler implements HttpHandler {
     }
 
     private void handleGet(HttpExchange exchange) {
-        try {
-            QueryParams params = getSearchParamsFromRequest(exchange);
-            ArrayList<ObservationRecord> messages = db.serchRecords(
-                params.identification(), 
-                params.nickname(), 
-                params.before(), 
-                params.after()
-            );
+        QueryParams params = getSearchParamsFromRequest(exchange);
+        ArrayList<ObservationRecord> messages = db.serchRecords(
+            params.identification(), 
+            params.nickname(), 
+            params.before(), 
+            params.after()
+        );
 
-            JSONArray responseMessages = new JSONArray();
-            for (ObservationRecord r : messages) {
-                responseMessages.put(r.getJson());
-            }
-
-            sendResponse(exchange, 200, responseMessages.toString());
-
-        } catch (Exception e) {
-            System.out.println("SearchHandler > handleGet > Something went wrong \n" + e.getMessage());
-            sendResponse(exchange, 400, "handleGetException");
+        JSONArray responseMessages = new JSONArray();
+        for (ObservationRecord r : messages) {
+            responseMessages.put(r.getJson());
         }
+
+        sendResponse(exchange, 200, responseMessages.toString());
     }
 
     @Override
     public void handle(HttpExchange exchange) {
         String method = exchange.getRequestMethod().toUpperCase();
 
-        if ("GET".equals(method)) {
-            handleGet(exchange);
-        } else {
-            sendResponse(exchange, 400, "Not supported");
-        }
+        try {
+            switch (method) {
+                case "OPTIONS":
+                    exchange.sendResponseHeaders(204, -1);
+                    break;
+                case "GET":
+                    handleGet(exchange);
+                    break;
+                default:
+                    sendResponse(exchange, 405, "Method not allowed");
+            }
+        } catch (Exception e) {
+            handleException(exchange, e);
+        }   
     }
 }

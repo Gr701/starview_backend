@@ -1,6 +1,5 @@
 package com.o3.server.handlers;
 
-import java.io.IOException;
 import java.util.ArrayList;
 
 import org.json.JSONArray;
@@ -9,7 +8,6 @@ import org.json.JSONObject;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
-import com.o3.server.managers.AuthenticationManager;
 import com.o3.server.managers.DatabaseManager;
 import com.o3.server.models.User;
 import com.o3.server.models.ObservationRecord;
@@ -18,11 +16,9 @@ import static com.o3.server.utils.HttpUtils.*;
 import static com.o3.server.utils.JsonUtils.*;
 
 public class DatarecordHandler implements HttpHandler {
-    private final AuthenticationManager userAuthenticator;
     private DatabaseManager db;
 
-    public DatarecordHandler(AuthenticationManager ua) {
-        userAuthenticator = ua;
+    public DatarecordHandler() {
         db = DatabaseManager.getInstance();
     }
 
@@ -41,7 +37,7 @@ public class DatarecordHandler implements HttpHandler {
         ObservationRecord record = new ObservationRecord();
 
         String ownerUsername = getUsernameFromAuth(exchange);
-        String owner = userAuthenticator.getNickname(ownerUsername);
+        String owner = db.getUser(ownerUsername).getNickname();
         JSONObject json = getJsonFromRequest(exchange);
 
         record.setOwnerUsername(ownerUsername);
@@ -59,9 +55,6 @@ public class DatarecordHandler implements HttpHandler {
 
         //GET THE CURRENT RECORD
         ObservationRecord record = db.getRecordById(id);
-        if (record == null) {
-            throw new RuntimeException("Id not found in the database");
-        }
 
         //GET REQUEST JSON
         JSONObject json = getJsonFromRequest(exchange);
@@ -91,6 +84,19 @@ public class DatarecordHandler implements HttpHandler {
         sendResponse(exchange, 200, "Record updated");
     }
 
+    private void handleDelete(HttpExchange exchange) {
+        Integer id = getIdFromRequest(exchange);
+        ObservationRecord record = db.getRecordById(id);
+
+        String username = getUsernameFromAuth(exchange);
+        if (!record.getOwnerUsername().equals(username)) {
+            throw new IllegalArgumentException("Another owner owns the record");
+        }
+
+        db.deleteRecord(id);
+        sendResponse(exchange, 200, "Record deleted");
+    }
+
     @Override
     public void handle(HttpExchange exchange) {
         //System.out.println("DatarecordHandler > handle > Request handled in 
@@ -112,17 +118,14 @@ public class DatarecordHandler implements HttpHandler {
                 case "PUT":
                     handlePut(exchange);
                     break;
+                case "DELETE":
+                    handleDelete(exchange);
+                    break;
                 default:
                     sendResponse(exchange, 405, "Method not allowed");
             }
-        } catch (IllegalArgumentException e) {
-            sendResponse(exchange, 400, e.getMessage());
-        } catch (RuntimeException e) {
-            sendResponse(exchange, 500, e.getMessage());
         } catch (Exception e) {
-            System.out.println("DatarecordHandler > handle > Exception > " + method + " > " + e);
-            e.printStackTrace(System.out); 
-            sendResponse(exchange, 500, "Error handling the request");
+            handleException(exchange, e);
         }
     }
 }

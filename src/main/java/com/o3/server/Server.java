@@ -19,9 +19,7 @@ import com.o3.server.handlers.DatarecordHandler;
 import com.o3.server.handlers.ProfileHandler;
 import com.o3.server.handlers.RegistrationHandler;
 import com.o3.server.handlers.SearchHandler;
-
-
-
+import com.o3.server.handlers.CommentHandler;
 
 public class Server {
     private Server() {}
@@ -31,10 +29,8 @@ public class Server {
      */
     private static SSLContext myServerSSLContext(String[] args) throws Exception {
         //char[] passphrase = "progr3key".toCharArray();
-        //char[] passphrase = "passwordTest".toCharArray();
         char[] passphrase = args[1].toCharArray();
         KeyStore ks = KeyStore.getInstance("JKS");
-        //ks.load(new FileInputStream("keystoreTest2.jks"), passphrase);
         ks.load(new FileInputStream(args[0]), passphrase);
 
         KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
@@ -59,7 +55,7 @@ public class Server {
             //create the http server to port 8001 with default logger
             HttpsServer server = HttpsServer.create(new InetSocketAddress(8001),0);
 
-            AuthenticationManager userAuthenticator = new AuthenticationManager();
+            AuthenticationManager authenticationManager = new AuthenticationManager();
 
             SSLContext sslContext = myServerSSLContext(args);
             server.setHttpsConfigurator(new HttpsConfigurator(sslContext) {
@@ -71,19 +67,21 @@ public class Server {
                 }
             });
 
-            //create context that defines path for the resource, in this case a "help"
-            //server.createContext("/help", new Server());
-            HttpContext datarecordContext = server.createContext("/datarecord", new DatarecordHandler(userAuthenticator));
-            datarecordContext.setAuthenticator(userAuthenticator);
+            //create context that defines path for the resource
+            server.createContext("/registration", new RegistrationHandler()); 
+
+            HttpContext datarecordContext = 
+                server.createContext("/datarecord", new DatarecordHandler());
+            datarecordContext.setAuthenticator(authenticationManager);
 
             HttpContext searchContext = server.createContext("/search", new SearchHandler());
-            searchContext.setAuthenticator(userAuthenticator);
+            searchContext.setAuthenticator(authenticationManager);
             
             HttpContext profileContext = server.createContext("/profile", new ProfileHandler());
-            profileContext.setAuthenticator(userAuthenticator);
+            profileContext.setAuthenticator(authenticationManager);
 
-            server.createContext("/registration", new RegistrationHandler(userAuthenticator)); 
-            
+            HttpContext commentContext = server.createContext("/comment", new CommentHandler());
+            commentContext.setAuthenticator(authenticationManager);
 
             // creates a default executor
             //server.setExecutor(null); 

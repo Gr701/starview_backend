@@ -12,6 +12,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.stream.Collectors;
+import java.util.NoSuchElementException;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -71,7 +72,7 @@ public final class HttpUtils {
             throw new IllegalArgumentException("Missing query");
         }
 
-        if (query.split("=").length != 2 || !query.split("=")[0].equals("id")) {
+        if (query.split("=").length != 2 || !query.split("=")[0].equals("recordId")) {
             throw new IllegalArgumentException("Invalid query");
         } 
 
@@ -159,7 +160,21 @@ public final class HttpUtils {
             stream.write(message.getBytes("UTF-8"));
             stream.flush();
         } catch (IOException e) {
-            System.out.println("DatarecordHandler > sendResponse > " + e.getMessage());
+            System.out.println("sendResponse > Exception > " + e.getMessage());
+        }
+    }
+
+    public static void handleException(HttpExchange exchange, Exception e) {
+        if (e instanceof IllegalArgumentException) {
+            sendResponse(exchange, 400, e.getMessage());
+        } else if (e instanceof NoSuchElementException) {
+            sendResponse(exchange, 404, e.getMessage());
+        } else if (e instanceof RuntimeException) {
+            sendResponse(exchange, 500, e.getMessage());
+        } else {
+            System.out.println(e.getMessage());
+            e.printStackTrace(System.out); 
+            sendResponse(exchange, 500, "Error handling the request");
         }
     }
 }

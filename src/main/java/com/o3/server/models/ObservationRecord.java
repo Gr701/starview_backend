@@ -39,16 +39,16 @@ public class ObservationRecord {
     public ObservationRecord () {
         id = null;
 
-        identifier = "";
-        description = "";
-        payload = "";
-        rightAscension = "";
-        declination = "";
-        timeReceived = "";
-        owner = "";
+        identifier = null;
+        description = null;
+        payload = null;
+        rightAscension = null;
+        declination = null;
+        timeReceived = null;
+        owner = null;
 
         isObservatoryPresent = false;
-        observatoryName = "";
+        observatoryName = null;
         latitude = 0.0;
         longitude = 0.0;
 
@@ -57,9 +57,9 @@ public class ObservationRecord {
         cloudinessPercentance = 0.0;
         bagroundLightVolume = 0.0;
 
-        ownerUsername = "";
-        updateReason = "";
-        modified = "";
+        ownerUsername = null;
+        updateReason = null;
+        modified = null;
 
         viewCount = 0;
         rating = 0.0; 
