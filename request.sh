@@ -41,7 +41,7 @@ EOF
 
         put_json1)
             echo "Putting json..."
-            curl --include --insecure -v -u user1:password1 -X PUT "$server/datarecord?recordId=1" \
+            curl --include --insecure -v -u user1:password1 -X PUT "$server/datarecord?recordId=4" \
                 -H "Content-Type: application/json" \
                 -d @- <<EOF
 {
@@ -95,8 +95,8 @@ EOF
             ;;
 
         rate)
-            echo "Adding view json..."
-            curl --include --insecure -v -u user1:password1 -X PUT "$server/datarecord?id=1" \
+            echo "rating json..."
+            curl --include --insecure -v -u user2:password2 -X PUT "$server/datarecord?recordId=5" \
                 -H "Content-Type: application/json" \
                 -d @- <<EOF
 {
@@ -170,7 +170,7 @@ EOF
                 -H "Content-Type: application/json" \
                 -d @- <<EOF       
 {
-    "recordId": 1,
+    "recordId": 4,
     "text": "my very second comment here :)"
 }
 EOF
@@ -178,13 +178,49 @@ EOF
 
         get_comments)
             echo "Getting comments..."
-            curl --include --insecure -v -u user2:password2 -X GET "$server/comment?recordId=1"
+            curl --include --insecure -v -u user2:password2 -X GET "$server/comment?recordId=-1"
             ;;
 
         delete)
             echo "Deleting record..."
-            curl --include --insecure -v -u user2:password2 -X DELETE "$server/datarecord?recordId=3"
+            curl --include --insecure -v -u user2:password2 -X DELETE "$server/datarecord?recordId=2"
             ;;
+
+        createCollection)
+            echo "Creating collection..."
+            curl --include --insecure -u user2:password2 -X POST "$server/collection" \
+                -H "Content-Type: application/json" \
+                -d @- <<EOF       
+{
+    "name": First collection,
+    "description": "it will be used for testing"
+}
+EOF
+            ;;
+
+        addToCollection)
+            echo "Adding to collection..."
+            curl --include --insecure -u user2:password2 -X PUT "$server/collection" \
+                -H "Content-Type: application/json" \
+                -d @- <<EOF       
+{
+    "recordId": 4,
+    "collectionId": 2
+}
+EOF
+            ;;
+
+        get_collections)
+            echo "Getting collections..."
+            curl --include --insecure -v -u user2:password2 -X GET "$server/collection?recordId=-1"
+            ;;
+
+        get_collection)
+            echo "Getting collection..."
+            curl --include --insecure -v -u user2:password2 -X GET "$server/collection?recordId=2"
+            ;;
+
+
     esac
 fi
 exit 0 

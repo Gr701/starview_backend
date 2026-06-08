@@ -20,7 +20,6 @@ public class RegistrationHandler implements HttpHandler {
     }
 
     private void handlePost(HttpExchange exchange) {
-        checkContentType(exchange);
         JSONObject json = getJsonFromRequest(exchange);
 
         String username = getStringFromJson(json, "username");

@@ -36,15 +36,6 @@ public final class HttpUtils {
         return date.format(formatter);
     }
 
-    public static void checkContentType (HttpExchange exchange) {
-        Headers headers = exchange.getRequestHeaders();
-        if (headers.containsKey("Content-Type")
-        && headers.get("Content-Type").get(0).equalsIgnoreCase("application/json")) {
-            return;
-        } 
-        throw new IllegalArgumentException("Conten type must be application/json");
-    } 
-
     public static String getUsernameFromAuth(HttpExchange exchange) {
         // Get the Authorization header
         String authHeader = exchange.getRequestHeaders().getFirst("Authorization");
@@ -121,7 +112,17 @@ public final class HttpUtils {
         return new QueryParams(identification, nickname, before, after);
     }
 
+    public static void checkContentType (HttpExchange exchange) {
+        Headers headers = exchange.getRequestHeaders();
+        if (headers.containsKey("Content-Type")
+        && headers.get("Content-Type").get(0).equalsIgnoreCase("application/json")) {
+            return;
+        } 
+        throw new IllegalArgumentException("Conten type must be application/json");
+    } 
+
     public static JSONObject getJsonFromRequest (HttpExchange exchange) {
+        checkContentType(exchange);
         String newRecordText;
         try (
             InputStream stream = exchange.getRequestBody();
@@ -149,7 +150,7 @@ public final class HttpUtils {
         //there these headers added in authentication too so it would duplicate otherwise
         Headers h = exchange.getResponseHeaders();
         h.add("Access-Control-Allow-Origin", "http://localhost:8000");
-        h.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        h.add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
         h.add("Access-Control-Allow-Headers", "Content-Type, Authorization");
     }
 

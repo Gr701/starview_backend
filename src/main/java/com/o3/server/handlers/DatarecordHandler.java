@@ -23,17 +23,28 @@ public class DatarecordHandler implements HttpHandler {
     }
 
     private void handleGet(HttpExchange exchange) {
-        ArrayList<ObservationRecord> messages = db.getRecords(); 
-        JSONArray responseMessages = new JSONArray();
+        //5 most viewed and 5 most active
 
-        for (ObservationRecord r : messages) {
-            responseMessages.put(r.getJson());
+        ArrayList<ObservationRecord> viewedRecords = db.getMostViewedRecords();
+        JSONArray viewedRecordsJson = new JSONArray();
+        ArrayList<ObservationRecord> activeRecords = db.getMostActiveRecords();
+        JSONArray activeRecordsJson = new JSONArray();
+
+        for (ObservationRecord r : viewedRecords) {
+            viewedRecordsJson.put(r.getJson());
         }
-        sendResponse(exchange, 200, responseMessages.toString());
+        for (ObservationRecord r : activeRecords) {
+            activeRecordsJson.put(r.getJson());
+        }
+
+        JSONObject response = new JSONObject();
+        response.put("viewedRecords", viewedRecordsJson);
+        response.put("activeRecords", activeRecordsJson);
+
+        sendResponse(exchange, 200, response.toString());
     }
 
     private void handlePost(HttpExchange exchange) {
-        checkContentType(exchange);
         ObservationRecord record = new ObservationRecord();
 
         String ownerUsername = getUsernameFromAuth(exchange);
@@ -50,8 +61,8 @@ public class DatarecordHandler implements HttpHandler {
     }
 
     private void handlePut(HttpExchange exchange) {
-        checkContentType(exchange);
         Integer id = getIdFromRequest(exchange);
+        String username = getUsernameFromAuth(exchange);
 
         //GET THE CURRENT RECORD
         ObservationRecord record = db.getRecordById(id);
@@ -64,12 +75,13 @@ public class DatarecordHandler implements HttpHandler {
                 record.addView();
                 break;
             case "updateRating":
-                record.updateRating(getIntegerFromJson(json, "rating"));
+                //record.updateRating(getIntegerFromJson(json, "rating"));
+                int userId = db.getUser(username).getId();
+                db.updateRating(userId, id, getIntegerFromJson(json, "rating"));
                 break;
             case "editRecord":
-                String username = getUsernameFromAuth(exchange);
                 if (!record.getOwnerUsername().equals(username)) {
-                    throw new IllegalArgumentException("Another owner owns the record");
+                    throw new IllegalArgumentException("Another user owns the record");
                 }
                 
                 record.setModified(getCurrentFormattedTime());
@@ -99,10 +111,6 @@ public class DatarecordHandler implements HttpHandler {
 
     @Override
     public void handle(HttpExchange exchange) {
-        //System.out.println("DatarecordHandler > handle > Request handled in 
-        //thread " + Thread.currentThread().threadId());
-        System.out.println("DatarecordHandler > handle > we got a request");
-
         String method = exchange.getRequestMethod().toUpperCase();
         try {
             switch (method) {

@@ -4,6 +4,7 @@ import org.json.JSONObject;
 import org.json.JSONException;
 
 import com.o3.server.managers.WeatherManager;
+import com.o3.server.managers.DatabaseManager;
 
 import static com.o3.server.utils.JsonUtils.*;
 
@@ -33,8 +34,6 @@ public class ObservationRecord {
     private String modified;
 
     private Integer viewCount;
-    private Double rating;
-    private Integer ratingCount;
 
     public ObservationRecord () {
         id = null;
@@ -62,8 +61,6 @@ public class ObservationRecord {
         modified = null;
 
         viewCount = 0;
-        rating = 0.0; 
-        ratingCount = 0;
     }
 
     public ObservationRecord (
@@ -91,9 +88,7 @@ public class ObservationRecord {
         String updateReason,
         String modified,
 
-        Integer viewCount,
-        Double rating,
-        Integer ratingCount
+        Integer viewCount
     ) {
         this.id = id;
 
@@ -120,8 +115,6 @@ public class ObservationRecord {
         this.modified = modified;
 
         this.viewCount = viewCount;
-        this.rating = rating;
-        this.ratingCount = ratingCount;
     }
 
     //GETTERS
@@ -150,8 +143,6 @@ public class ObservationRecord {
     public String getModified() {return modified;}
 
     public Integer getViewCount() {return viewCount;}
-    public Double getRating() {return rating;}
-    public Integer getRatingCount() {return ratingCount;}
 
     //SETTERS
     public void setIdentifier (String identifier) {this.identifier = identifier;}
@@ -186,11 +177,6 @@ public class ObservationRecord {
         viewCount += 1;
     }
 
-    public void updateRating(int rating) {
-        this.rating = (this.rating * ratingCount + rating) / (ratingCount + 1);
-        ratingCount += 1;
-    }
-
     public JSONObject getJson() {
         JSONObject json = new JSONObject();
 
@@ -203,8 +189,10 @@ public class ObservationRecord {
         json.put("recordTimeReceived", timeReceived);
         json.put("recordOwner", owner);
         json.put("recordViewCount", viewCount);
-        json.put("recordRating", rating);
-        json.put("recordRatingCount", ratingCount);
+
+        DatabaseManager db = DatabaseManager.getInstance();
+        DatabaseManager.RecordRating rr = db.getRating(id);
+        json.put("recordRating", rr.value());
 
         if (isObservatoryPresent) {
             JSONObject observatory = new JSONObject();

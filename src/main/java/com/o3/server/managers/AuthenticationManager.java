@@ -35,16 +35,19 @@ public class AuthenticationManager extends BasicAuthenticator {
     }
 
     private void addCorsHeaders(HttpExchange exchange) {
+        //change in http utils as well
         Headers h = exchange.getResponseHeaders();
         h.add("Access-Control-Allow-Origin", "http://localhost:8000");
-        h.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        h.add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
         h.add("Access-Control-Allow-Headers", "Content-Type, Authorization");
     }
 
     @Override
     public Result authenticate(HttpExchange exchange) {
         addCorsHeaders(exchange);
+        System.out.println("we are authenticating");
         if ("OPTIONS".equals(exchange.getRequestMethod().toUpperCase())) {
+            System.out.println("we are authenticating OPTIONS");
             return new Success(new HttpPrincipal("preflight", "what_is_realm"));
         }
         return super.authenticate(exchange);

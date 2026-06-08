@@ -14,12 +14,12 @@ import javax.net.ssl.SSLParameters;
 import javax.net.ssl.TrustManagerFactory;
 
 import com.o3.server.managers.AuthenticationManager;
-import com.o3.server.managers.DatabaseManager;
 import com.o3.server.handlers.DatarecordHandler;
 import com.o3.server.handlers.ProfileHandler;
 import com.o3.server.handlers.RegistrationHandler;
 import com.o3.server.handlers.SearchHandler;
 import com.o3.server.handlers.CommentHandler;
+import com.o3.server.handlers.CollectionHandler;
 
 public class Server {
     private Server() {}
@@ -49,13 +49,9 @@ public class Server {
         try {
             //System.out.println(WeatherManager.getWeather(2.0, 4.0, "2025-03-19T07:28:20.065Z"));
 
-            //database
-            DatabaseManager db = DatabaseManager.getInstance();
-
             //create the http server to port 8001 with default logger
             HttpsServer server = HttpsServer.create(new InetSocketAddress(8001),0);
 
-            AuthenticationManager authenticationManager = new AuthenticationManager();
 
             SSLContext sslContext = myServerSSLContext(args);
             server.setHttpsConfigurator(new HttpsConfigurator(sslContext) {
@@ -66,6 +62,8 @@ public class Server {
                     params.setSSLParameters(sslparams);
                 }
             });
+
+            AuthenticationManager authenticationManager = new AuthenticationManager();
 
             //create context that defines path for the resource
             server.createContext("/registration", new RegistrationHandler()); 
@@ -82,6 +80,10 @@ public class Server {
 
             HttpContext commentContext = server.createContext("/comment", new CommentHandler());
             commentContext.setAuthenticator(authenticationManager);
+
+            HttpContext collectionContext = 
+                server.createContext("/collection", new CollectionHandler());
+            collectionContext.setAuthenticator(authenticationManager);
 
             // creates a default executor
             //server.setExecutor(null); 

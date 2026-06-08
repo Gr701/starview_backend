@@ -24,6 +24,7 @@ public class SearchHandler implements HttpHandler {
 
     private void handleGet(HttpExchange exchange) {
         QueryParams params = getSearchParamsFromRequest(exchange);
+        System.out.println(params);
         ArrayList<ObservationRecord> messages = db.serchRecords(
             params.identification(), 
             params.nickname(), 
